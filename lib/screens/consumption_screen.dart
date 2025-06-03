@@ -1,10 +1,8 @@
-
-// Código actualizado de pantalla modernizada con mejoras de UI/UX
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:cep_flutter_web/config/config.dart';
 
 class ConsumptionScreen extends StatefulWidget {
   final int userId;
@@ -26,6 +24,7 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
   bool isLoading = false;
   Map<String, dynamic> totalSummary = {};
   double grandTotal = 0.0;
+  final baseUrl = AppConfig.baseUrl;
 
   @override
   void initState() {
@@ -40,8 +39,11 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
     print("EventId: ${widget.eventId}");
 
     try {
+
+      final baseUrl = AppConfig.baseUrl;
+
       final response = await http.get(
-        Uri.parse('http://localhost:8080/api/consumptions?userId=${widget.userId}&eventId=${widget.eventId}'),
+        Uri.parse('$baseUrl/api/consumptions?userId=${widget.userId}&eventId=${widget.eventId}'),
       );
 
       if (response.statusCode == 200) {
@@ -114,7 +116,7 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
 
     try {
       final response = await http.delete(
-        Uri.parse('http://localhost:8080/api/consumptions/$id'),
+        Uri.parse('$baseUrl/api/consumptions/$id'),
       );
 
       if (response.statusCode == 200) {

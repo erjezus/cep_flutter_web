@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:cep_flutter_web/config/config.dart';
 
 class CommonSummaryScreen extends StatefulWidget {
   final int userId;
@@ -18,6 +19,7 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
   double userTotal = 0.0;
   int userCount = 0;
   bool isLoading = false;
+  final baseUrl = AppConfig.baseUrl;
 
   @override
   void initState() {
@@ -29,14 +31,17 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
     setState(() => isLoading = true);
 
     try {
+
+
+
       final commonRes = await http.get(
-        Uri.parse('http://localhost:8080/api/expenses/common?eventId=${widget.eventId}'),
+        Uri.parse('$baseUrl/api/expenses/common?eventId=${widget.eventId}'),
       );
       final userRes = await http.get(
-        Uri.parse('http://localhost:8080/api/users/count'),
+        Uri.parse('$baseUrl/api/users/count'),
       );
       final consumptionRes = await http.get(
-        Uri.parse('http://localhost:8080/api/consumptions/total/event?userId=${widget.userId}&eventId=${widget.eventId}'),
+        Uri.parse('$baseUrl/api/consumptions/total/event?userId=${widget.userId}&eventId=${widget.eventId}'),
       );
 
       if (commonRes.statusCode == 200 && userRes.statusCode == 200 && consumptionRes.statusCode == 200) {

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:cep_flutter_web/config/config.dart';
 
 class UploadExpenseScreen extends StatefulWidget {
   final int userId;
@@ -25,6 +26,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
   File? _selectedImage;
   bool _isSubmitting = false;
   bool _isShared = false;
+  final baseUrl = AppConfig.baseUrl;
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -41,7 +43,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
 
     setState(() => _isSubmitting = true);
 
-    final uri = Uri.parse("http://localhost:8080/api/expenses");
+    final uri = Uri.parse("$baseUrl/api/expenses");
     final request = http.MultipartRequest("POST", uri)
       ..fields['user_id'] = widget.userId.toString()
       ..fields['event_id'] = widget.eventId.toString()

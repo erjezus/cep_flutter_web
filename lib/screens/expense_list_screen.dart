@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:cep_flutter_web/config/config.dart';
 
 class ExpenseListScreen extends StatefulWidget {
   final int userId;
@@ -17,6 +18,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   List personalExpenses = [];
   bool expandPersonal = false;
   bool expandCommon = false;
+  final baseUrl = AppConfig.baseUrl;
 
   @override
   void initState() {
@@ -26,7 +28,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
 
   void fetchExpenses() async {
     final res = await http.get(
-      Uri.parse('http://localhost:8080/api/expenses?user_id=${widget.userId}&event_id=${widget.eventId}'),
+      Uri.parse('$baseUrl/api/expenses?user_id=${widget.userId}&event_id=${widget.eventId}'),
     );
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
@@ -39,7 +41,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
 
   Future<void> deleteExpense(int id, bool isCommon) async {
     final response = await http.delete(
-      Uri.parse('http://localhost:8080/api/expenses/$id'),
+      Uri.parse('$baseUrl/api/expenses/$id'),
     );
     if (response.statusCode == 200) {
       setState(() {
@@ -69,7 +71,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
             ? ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
-            'http://localhost:8080/api/${e['image_path']}',
+            '$baseUrl/api/${e['image_path']}',
             width: 50,
             height: 50,
             fit: BoxFit.cover,

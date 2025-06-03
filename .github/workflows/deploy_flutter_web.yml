@@ -21,8 +21,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Copy .env.production to .env
+        run: cp .env.production .env
+
       - name: Build web
-        run: flutter build web
+        run: flutter build web --release
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

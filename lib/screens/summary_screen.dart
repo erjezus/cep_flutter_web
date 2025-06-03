@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:cep_flutter_web/config/config.dart';
 
 class SummaryScreen extends StatefulWidget {
   final int userId;
@@ -12,6 +13,7 @@ class SummaryScreen extends StatefulWidget {
 
 class _SummaryScreenState extends State<SummaryScreen> {
   double total = 0.0;
+  final baseUrl = AppConfig.baseUrl;
 
   @override
   void initState() {
@@ -21,7 +23,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
   void fetchTotal() async {
     final response = await http.post(
-      Uri.parse('http://localhost:8080/api/consumptions/total'),
+      Uri.parse('$baseUrl/api/consumptions/total'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"user_id": widget.userId}),
     );

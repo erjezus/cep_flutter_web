@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/screens/event_menu_screen.dart';
+import 'package:cep_flutter_web/config/config.dart';
 
 class EventScreen extends StatefulWidget {
   final int userId;
+
   EventScreen({required this.userId});
 
   @override
@@ -13,6 +15,7 @@ class EventScreen extends StatefulWidget {
 
 class _EventScreenState extends State<EventScreen> {
   List events = [];
+  final baseUrl = AppConfig.baseUrl;
 
   @override
   void initState() {
@@ -23,7 +26,7 @@ class _EventScreenState extends State<EventScreen> {
 
   void fetchEvents() async {
     print("⏳ fetchEvents lanzado");
-    final response = await http.get(Uri.parse('http://localhost:8080/api/events'));
+    final response = await http.get(Uri.parse('$baseUrl/api/events'));
     print("📥 Status: ${response.statusCode}");
     print("📥 Body: ${response.body}");
 

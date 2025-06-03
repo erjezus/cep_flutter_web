@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:cep_flutter_web/config/config.dart';
 
 class ProductScreen extends StatefulWidget {
   final int userId;
@@ -15,6 +16,7 @@ class ProductScreen extends StatefulWidget {
 class _ProductScreenState extends State<ProductScreen> {
   Map<String, List> groupedProducts = {};
   Map<String, bool> expandedSections = {};
+  final baseUrl = AppConfig.baseUrl;
 
   @override
   void initState() {
@@ -23,7 +25,7 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   void fetchGroupedProducts() async {
-    final response = await http.get(Uri.parse('http://localhost:8080/api/products/grouped'));
+    final response = await http.get(Uri.parse('$baseUrl/api/products/grouped'));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -57,7 +59,7 @@ class _ProductScreenState extends State<ProductScreen> {
       });
 
       final res = await http.post(
-        Uri.parse('http://localhost:8080/api/consumptions'), // si estás en Android
+        Uri.parse('$baseUrl/api/consumptions'), // si estás en Android
         headers: {"Content-Type": "application/json"},
         body: body,
       );

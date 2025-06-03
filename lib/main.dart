@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cep_flutter_web/screens/event_screen.dart';
 
 const firebaseConfig = FirebaseOptions(
@@ -16,8 +18,12 @@ const firebaseConfig = FirebaseOptions(
   measurementId: "G-N2L53Z8W5Y",
 );
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Carga el archivo .env correspondiente
+  await dotenv.load(fileName: kReleaseMode ? '.env.production' : '.env.development');
+
   await Firebase.initializeApp(options: firebaseConfig);
   runApp(MyApp());
 }
@@ -35,6 +41,7 @@ class MyApp extends StatelessWidget {
 
 class LoginScreen extends StatelessWidget {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final String baseUrl = dotenv.env['BASE_URL']!;
 
   Future<void> _signInWithGoogle(BuildContext context) async {
     final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -72,7 +79,7 @@ class LoginScreen extends StatelessWidget {
 
   Future<Map<String, dynamic>?> _registerOrLoginBackendUser(String username, String email) async {
     final response = await http.post(
-      Uri.parse('http://localhost:8080/api/users'),
+      Uri.parse('$baseUrl/api/users'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'username': username,
@@ -88,7 +95,7 @@ class LoginScreen extends StatelessWidget {
   }
 
   Future<Map<String, dynamic>?> _getUserByEmail(String email) async {
-    final response = await http.get(Uri.parse('http://localhost:8080/api/users?email=$email'));
+    final response = await http.get(Uri.parse('$baseUrl/api/users?email=$email'));
     if (response.statusCode == 200) {
       final users = jsonDecode(response.body) as List;
       if (users.isNotEmpty) return users.first;
@@ -100,13 +107,13 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFB71C1C), Color(0xFFD32F2F)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFB71C1C), Color(0xFFD32F2F)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+        ),
         child: Center(
           child: Card(
             elevation: 12,
@@ -126,16 +133,16 @@ class LoginScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                   ),
                   SizedBox(height: 24),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  backgroundColor: Color(0xFFD32F2F),
-                ),
-                icon: Icon(Icons.login),
-                label: Text("Iniciar sesión con Google"),
-                onPressed: () => _signInWithGoogle(context),
-              ),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      backgroundColor: Color(0xFFD32F2F),
+                    ),
+                    icon: Icon(Icons.login),
+                    label: Text("Iniciar sesión con Google"),
+                    onPressed: () => _signInWithGoogle(context),
+                  ),
                 ],
               ),
             ),
