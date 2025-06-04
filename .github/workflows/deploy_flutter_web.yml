@@ -21,11 +21,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Copy .env.production to .env
-        run: cp .env.production .env
-
-      - name: Build web
-        run: flutter build web --release
+      - name: Build web with dart-define
+        run: flutter build web --release --dart-define=BASE_URL=https://cep-backend-039e.onrender.com
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
