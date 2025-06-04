@@ -39,9 +39,6 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
     print("EventId: ${widget.eventId}");
 
     try {
-
-      final baseUrl = AppConfig.baseUrl;
-
       final response = await http.get(
         Uri.parse('$baseUrl/api/consumptions?userId=${widget.userId}&eventId=${widget.eventId}'),
       );
@@ -92,7 +89,6 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
       }
     }
   }
-
 
   Future<void> _confirmDelete(int id) async {
     final confirmed = await showDialog<bool>(
@@ -205,7 +201,6 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
     );
   }
 
-
   Widget buildSummary(Color mainColor) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,30 +239,32 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
     final List<Color> dayColors = [Colors.white, Colors.grey[100]!, Colors.grey[200]!];
 
     return Scaffold(
+      backgroundColor: Colors.white, // 👈 evita bandas negras
       appBar: AppBar(
         title: Text("Mis consumiciones"),
         backgroundColor: mainColor,
       ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : consumptionsByDay.isEmpty
-          ? Center(child: Text("No hay consumiciones registradas"))
-          : ListView(
-        children: [
-          ...consumptionsByDay.asMap().entries.map((entry) {
-            final index = entry.key;
-            final dayData = entry.value;
-            print("dayData: $dayData");
-            final rawDate = dayData['date'];
-            final formattedDate = DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate));
-            final List consumptions = dayData['consumptions'];
-            final isExpanded = expandedDates.contains(rawDate);
-            final bgColor = dayColors[index % dayColors.length];
-            return buildAccordion(formattedDate, rawDate, consumptions, isExpanded, mainColor, bgColor);
-          }).toList(),
-          const SizedBox(height: 12),
-          buildSummary(mainColor),
-        ],
+      body: SafeArea( // 👈 respeta notch y safe areas
+        child: isLoading
+            ? Center(child: CircularProgressIndicator())
+            : consumptionsByDay.isEmpty
+            ? Center(child: Text("No hay consumiciones registradas"))
+            : ListView(
+          children: [
+            ...consumptionsByDay.asMap().entries.map((entry) {
+              final index = entry.key;
+              final dayData = entry.value;
+              final rawDate = dayData['date'];
+              final formattedDate = DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate));
+              final List consumptions = dayData['consumptions'];
+              final isExpanded = expandedDates.contains(rawDate);
+              final bgColor = dayColors[index % dayColors.length];
+              return buildAccordion(formattedDate, rawDate, consumptions, isExpanded, mainColor, bgColor);
+            }).toList(),
+            const SizedBox(height: 12),
+            buildSummary(mainColor),
+          ],
+        ),
       ),
     );
   }
