@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/screens/event_screen.dart';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/widgets/standard_card.dart';
 
 const firebaseConfig = FirebaseOptions(
   apiKey: "AIzaSyCcd94OXJ8gy_hW2agrHGBzpQhSycQtV3c",
@@ -19,7 +20,7 @@ const firebaseConfig = FirebaseOptions(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  print("🌐 BASE_URL: ${AppConfig.baseUrl}");
+  print("\u{1F310} BASE_URL: ${AppConfig.baseUrl}");
   await Firebase.initializeApp(options: firebaseConfig);
   runApp(MyApp());
 }
@@ -29,7 +30,33 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'El Perolón',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Color(0xFFB71C1C),
+          brightness: Brightness.light,
+        ),
+        textTheme: Typography.blackCupertino.copyWith(
+          bodyMedium: TextStyle(fontSize: 16),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFFB71C1C)),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFFB71C1C),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+            textStyle: TextStyle(fontSize: 16),
+          ),
+        ),
+      ),
       home: LoginScreen(),
     );
   }
@@ -99,9 +126,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = emailController.text.trim();
     final password = passwordController.text;
 
-    print("📩 Email: $email");
-    print("🔑 Password: $password");
-
     if (email.isEmpty || password.isEmpty) {
       _showError("Completa todos los campos.");
       return;
@@ -113,16 +137,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      print("🛠 Intentando registrar en Firebase...");
       await _auth.createUserWithEmailAndPassword(email: email, password: password);
-
-      print("✅ Registro en Firebase OK. Registrando en backend...");
       final backendUser = await _registerOrLoginBackendUser(email.split('@').first, email, password);
-      print("➡️ backendUser: $backendUser");
-
       _navigateToEventScreen(backendUser);
     } catch (e) {
-      print("❌ Error de Firebase: $e");
       _showError('Error al registrarse: $e');
     }
   }
@@ -185,55 +203,60 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         child: Center(
-          child: Card(
+          child: StandardCard( // 👈 Sustituido
             elevation: 12,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            margin: EdgeInsets.symmetric(horizontal: 32),
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset('assets/logo.png', height: 150),
-                    Text(
-                      isLogin ? "Inicia sesión para continuar" : "Crea una cuenta",
-                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+            padding: const EdgeInsets.all(32),
+            margin: const EdgeInsets.symmetric(horizontal: 32),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset('assets/logo.png', height: 150),
+                  const SizedBox(height: 16),
+                  Text(
+                    isLogin ? "Bienvenido de nuevo" : "Crea una cuenta",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[800]),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: emailController,
+                    decoration: const InputDecoration(
+                      labelText: "Email",
+                      prefixIcon: Icon(Icons.email_outlined),
                     ),
-                    SizedBox(height: 24),
-                    TextField(
-                      controller: emailController,
-                      decoration: InputDecoration(labelText: "Email"),
-                      keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordController,
+                    decoration: const InputDecoration(
+                      labelText: "Contraseña",
+                      prefixIcon: Icon(Icons.lock_outline),
                     ),
-                    SizedBox(height: 12),
-                    TextField(
-                      controller: passwordController,
-                      decoration: InputDecoration(labelText: "Contraseña"),
-                      obscureText: true,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: isLogin ? _signInWithEmailAndPassword : _registerWithEmailAndPassword,
+                    child: Text(isLogin ? "Iniciar sesión" : "Registrarse"),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => isLogin = !isLogin),
+                    child: Text(isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"),
+                  ),
+                  const Divider(height: 32),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.login),
+                    label: const Text("Continuar con Google"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Color(0xFFB71C1C),
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                     ),
-                    SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: isLogin ? _signInWithEmailAndPassword : _registerWithEmailAndPassword,
-                      child: Text(isLogin ? "Iniciar sesión" : "Registrarse"),
-                    ),
-                    TextButton(
-                      onPressed: () => setState(() => isLogin = !isLogin),
-                      child: Text(isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"),
-                    ),
-                    //Divider(),
-                    //ElevatedButton.icon(
-                    //  style: ElevatedButton.styleFrom(
-                    //    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    //    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    //    backgroundColor: Color(0xFFD32F2F),
-                    //  ),
-                    //  icon: Icon(Icons.login),
-                    //  label: Text("Iniciar sesión con Google"),
-                    //  onPressed: _signInWithGoogle,
-                    //),
-                  ],
-                ),
+                    onPressed: _signInWithGoogle,
+                  ),
+                ],
               ),
             ),
           ),

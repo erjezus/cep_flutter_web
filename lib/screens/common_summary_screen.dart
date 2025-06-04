@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/widgets/standard_card.dart';
 
 class CommonSummaryScreen extends StatefulWidget {
   final int userId;
@@ -31,9 +32,6 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
     setState(() => isLoading = true);
 
     try {
-
-
-
       final commonRes = await http.get(
         Uri.parse('$baseUrl/api/expenses/common?eventId=${widget.eventId}'),
       );
@@ -81,28 +79,32 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
   }
 
   Widget buildInfoCard(String title, String value) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: ListTile(
-        title: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-        trailing: Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+    return StandardCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final mainColor = Color(0xFFD32F2F);
+    final mainColor = const Color(0xFFD32F2F);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Resumen de gastos'),
+        title: const Text('Resumen de gastos',style: TextStyle(color: Colors.white)),
         backgroundColor: mainColor,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
@@ -111,7 +113,9 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
             buildInfoCard("Tus consumiciones personales", "€${userTotal.toStringAsFixed(2)}"),
             buildInfoCard("Usuarios registrados", "$userCount"),
             buildInfoCard("Parte proporcional común", "€${perUser.toStringAsFixed(2)}"),
-            Divider(height: 32, thickness: 1),
+            const SizedBox(height: 12),
+            const Divider(thickness: 1),
+            const SizedBox(height: 12),
             buildInfoCard("Total a pagar", "€${(perUser + userTotal).toStringAsFixed(2)}"),
           ],
         ),

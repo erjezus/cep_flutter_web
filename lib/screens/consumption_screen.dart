@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/widgets/standard_section.dart';
 
 class ConsumptionScreen extends StatefulWidget {
   final int userId;
@@ -35,9 +37,6 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
   void fetchConsumptions() async {
     setState(() => isLoading = true);
 
-    print("UserId: ${widget.userId}");
-    print("EventId: ${widget.eventId}");
-
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/consumptions?userId=${widget.userId}&eventId=${widget.eventId}'),
@@ -50,15 +49,10 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
           computeSummary(data);
         });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error al cargar consumiciones"),
-            backgroundColor: Colors.grey[800],
-          ),
-        );
+        _showError("Error al cargar consumiciones");
       }
     } catch (e) {
-      // Error handling
+      _showError("Error de red al cargar consumiciones");
     } finally {
       setState(() => isLoading = false);
     }
@@ -90,176 +84,177 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
     }
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.grey[800]),
+    );
+  }
+
   Future<void> _confirmDelete(int id) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text("¿Eliminar consumición?"),
-        content: Text("Esta acción no se puede deshacer."),
+        title: const Text("¿Eliminar consumición?"),
+        content: const Text("Esta acción no se puede deshacer."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text("Cancelar")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text("Eliminar", style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancelar")),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Eliminar", style: TextStyle(color: Colors.red))),
         ],
       ),
     );
-    if (confirmed == true) {
-      _deleteConsumption(id);
-    }
+    if (confirmed == true) _deleteConsumption(id);
   }
 
   void _deleteConsumption(int id) async {
     setState(() => isLoading = true);
 
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/api/consumptions/$id'),
-      );
+      final response = await http.delete(Uri.parse('$baseUrl/api/consumptions/$id'));
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Consumición eliminada"),
-            backgroundColor: Color(0xFFD32F2F),
-          ),
-        );
+        _showSuccess("Consumición eliminada");
         fetchConsumptions();
       } else {
         throw Exception("Error al eliminar");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error al eliminar consumición"),
-          backgroundColor: Colors.grey[800],
-        ),
-      );
+      _showError("Error al eliminar consumición");
+    } finally {
       setState(() => isLoading = false);
     }
   }
 
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: const Color(0xFFD32F2F)),
+    );
+  }
+
   IconData getIconForProduct(String name) {
-    if (name.toLowerCase().contains("cerveza") || name.toLowerCase().contains("botell")) return Icons.local_drink;
-    if (name.toLowerCase().contains("comida") || name.toLowerCase().contains("comensal")) return Icons.restaurant;
+    final lower = name.toLowerCase();
+    if (lower.contains("cerveza") || lower.contains("botell")) return Icons.local_drink;
+    if (lower.contains("comida") || lower.contains("comensal")) return Icons.restaurant;
     return Icons.fastfood;
   }
 
-  Widget buildAccordion(String title, String dateKey, List items, bool isExpanded, Color mainColor, Color bgColor) {
+  Widget buildAccordion(String title, String dateKey, List items, bool isExpanded, Color mainColor) {
     double dayTotal = 0.0;
     for (var c in items) {
       dayTotal += c['total_price'] ?? 0.0;
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        color: bgColor,
-        child: ExpansionTile(
-          initiallyExpanded: isExpanded,
-          onExpansionChanged: (expanded) {
-            setState(() {
-              if (expanded) {
-                expandedDates.add(dateKey);
-              } else {
-                expandedDates.remove(dateKey);
-              }
-            });
-          },
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: mainColor)),
-              Text("Total: €${dayTotal.toStringAsFixed(2)}", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
-            ],
-          ),
-          children: items.map<Widget>((c) {
-            final productName = c['product_name']?.toString() ?? 'Producto';
-            final consumedAtRaw = c['consumed_at'];
-            final consumedAtFormatted = consumedAtRaw != null
-                ? DateFormat('HH:mm').format(DateTime.tryParse(consumedAtRaw) ?? DateTime(2000))
-                : 'Hora desconocida';
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: StandardSection(
+        title: title,
+        icon: Icons.calendar_today,
+        color: mainColor,
+        initiallyExpanded: isExpanded,
+        onToggle: () {
+          setState(() {
+            if (isExpanded) {
+              expandedDates.remove(dateKey);
+            } else {
+              expandedDates.add(dateKey);
+            }
+          });
+        },
+        children: items.map<Widget>((c) {
+          final productName = c['product_name']?.toString() ?? 'Producto';
+          final consumedAtRaw = c['consumed_at'];
+          final consumedAtFormatted = consumedAtRaw != null
+              ? DateFormat('HH:mm').format(DateTime.tryParse(consumedAtRaw) ?? DateTime(2000))
+              : 'Hora desconocida';
 
-            return ListTile(
-              leading: Icon(getIconForProduct(productName), color: mainColor),
-              title: Text(productName, style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text("Cantidad: ${c['quantity']} • $consumedAtFormatted"),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text("€${(c['total_price'] ?? 0.0).toStringAsFixed(2)}", style: TextStyle(fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: Icon(Icons.delete, color: Colors.grey[700]),
-                    onPressed: () => _confirmDelete(c['id']),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
+          return ListTile(
+            leading: Icon(getIconForProduct(productName), color: mainColor),
+            title: Text(productName, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text("Cantidad: ${c['quantity']} • $consumedAtFormatted"),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("€${(c['total_price'] ?? 0.0).toStringAsFixed(2)}",
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: Icon(Icons.delete, color: Colors.grey[700]),
+                  onPressed: () => _confirmDelete(c['id']),
+                ),
+              ],
+            ),
+          );
+        }).toList()
+          ..insert(0, Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child: Text("Total: €${dayTotal.toStringAsFixed(2)}",
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+          )),
       ),
     );
   }
 
   Widget buildSummary(Color mainColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Text("Resumen total", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: mainColor)),
-        ),
-        ...totalSummary.entries.map((entry) {
-          final name = entry.key;
-          final details = entry.value;
-          return ListTile(
-            title: Text(name),
-            subtitle: Text("Cantidad: ${details['quantity']} • Unitario: €${details['unit_price']}"),
-            trailing: Text("€${details['total'].toStringAsFixed(2)}"),
-          );
-        }).toList(),
-        Divider(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              "Total: €${grandTotal.toStringAsFixed(2)}",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+    return StandardCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(12.0),
+            child: Text("Resumen total",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ),
-        )
-      ],
+          ...totalSummary.entries.map((entry) {
+            final name = entry.key;
+            final details = entry.value;
+            return ListTile(
+              title: Text(name),
+              subtitle: Text("Cantidad: ${details['quantity']} • Unitario: €${details['unit_price']}"),
+              trailing: Text("€${details['total'].toStringAsFixed(2)}"),
+            );
+          }).toList(),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                "Total: €${grandTotal.toStringAsFixed(2)}",
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          )
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color mainColor = Color(0xFFD32F2F);
-    final List<Color> dayColors = [Colors.white, Colors.grey[100]!, Colors.grey[200]!];
+    final Color mainColor = const Color(0xFFD32F2F);
 
     return Scaffold(
-      backgroundColor: Colors.white, // 👈 evita bandas negras
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("Mis consumiciones"),
+        title: const Text("Mis consumiciones", style: TextStyle(color: Colors.white)),
         backgroundColor: mainColor,
+        elevation: 0,
+        centerTitle: true,
       ),
-      body: SafeArea( // 👈 respeta notch y safe areas
+      body: SafeArea(
         child: isLoading
-            ? Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator())
             : consumptionsByDay.isEmpty
-            ? Center(child: Text("No hay consumiciones registradas"))
+            ? const Center(child: Text("No hay consumiciones registradas"))
             : ListView(
           children: [
-            ...consumptionsByDay.asMap().entries.map((entry) {
-              final index = entry.key;
-              final dayData = entry.value;
+            ...consumptionsByDay.map((dayData) {
               final rawDate = dayData['date'];
-              final formattedDate = DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate));
+              final formattedDate =
+              DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate));
               final List consumptions = dayData['consumptions'];
               final isExpanded = expandedDates.contains(rawDate);
-              final bgColor = dayColors[index % dayColors.length];
-              return buildAccordion(formattedDate, rawDate, consumptions, isExpanded, mainColor, bgColor);
+              return buildAccordion(formattedDate, rawDate, consumptions, isExpanded, mainColor);
             }).toList(),
             const SizedBox(height: 12),
             buildSummary(mainColor),

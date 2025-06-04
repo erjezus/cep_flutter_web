@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/widgets/standard_card.dart';
 
 class ExpenseListScreen extends StatefulWidget {
   final int userId;
@@ -53,20 +54,17 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Gasto eliminado"),
-          backgroundColor: Color(0xFFD32F2F),
+          content: const Text("Gasto eliminado"),
+          backgroundColor: const Color(0xFFD32F2F),
         ),
       );
     }
   }
 
   Widget buildExpenseTile(dynamic e, Color mainColor) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 5,
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    return StandardCard(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
         leading: e['image_path'] != null
             ? ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -81,7 +79,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
             : Icon(Icons.receipt, color: mainColor),
         title: Text(
           e['concept'],
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,12 +89,12 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               Text(e['notes'], style: TextStyle(color: Colors.grey[700])),
             Text(
               e['created_at'].toString().split('T')[0],
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),
         trailing: IconButton(
-          icon: Icon(Icons.delete, color: Colors.red),
+          icon: const Icon(Icons.delete, color: Colors.red),
           onPressed: () => deleteExpense(e['id'], e['is_common'] == true),
         ),
       ),
@@ -105,39 +103,34 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
 
   Widget buildAccordion(String title, bool expanded, ValueChanged<bool> onToggle, List items, Color mainColor) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        children: [
-          ListTile(
-            tileColor: Colors.grey[100],
-            title: Text(
-              title,
-              style: TextStyle(fontWeight: FontWeight.bold, color: mainColor),
-            ),
-            trailing: Icon(
-              expanded ? Icons.expand_less : Icons.expand_more,
-              color: mainColor,
-            ),
-            onTap: () => onToggle(!expanded),
-          ),
-          if (expanded)
-            ...items.map((e) => buildExpenseTile(e, mainColor)).toList(),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: StandardCard(
+        child: ExpansionTile(
+          initiallyExpanded: expanded,
+          onExpansionChanged: onToggle,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          childrenPadding: const EdgeInsets.only(bottom: 12),
+          title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: mainColor)),
+          children: items.map((e) => buildExpenseTile(e, mainColor)).toList(),
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final mainColor = Color(0xFFD32F2F);
+    final mainColor = const Color(0xFFD32F2F);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("Hoja de gastos"),
+        title: const Text("Hoja de gastos",style: TextStyle(color: Colors.white)),
         backgroundColor: mainColor,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: personalExpenses.isEmpty && commonExpenses.isEmpty
-          ? Center(child: Text("No hay gastos registrados"))
+          ? const Center(child: Text("No hay gastos registrados"))
           : ListView(
         children: [
           buildAccordion(

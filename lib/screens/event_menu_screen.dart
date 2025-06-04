@@ -4,6 +4,8 @@ import 'package:cep_flutter_web/screens/consumption_screen.dart';
 import 'package:cep_flutter_web/screens/upload_expense_screen.dart';
 import 'package:cep_flutter_web/screens/expense_list_screen.dart';
 import 'package:cep_flutter_web/screens/common_summary_screen.dart';
+import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/widgets/standard_section.dart';
 
 class EventMenuScreen extends StatefulWidget {
   final int userId;
@@ -32,156 +34,125 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color mainColor = const Color(0xFFD32F2F);
-    final Color orangeColor = Colors.deepOrange;
+    final Color mainColor = const Color(0xFFB71C1C);
+    final Color accentColor = Colors.deepOrange;
 
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(widget.eventName),
+        title: Text(widget.eventName, style: const TextStyle(color: Colors.white)),
         backgroundColor: mainColor,
+        centerTitle: true,
+        elevation: 0,
       ),
-      body: ListView(
+      body: Padding(
         padding: const EdgeInsets.all(16),
-        children: [
-          _buildSection(
-            context: context,
-            icon: Icons.local_bar,
-            title: "Consumiciones",
-            color: mainColor,
-            sectionKey: 'consumptions',
-            isExpanded: expandedSection == 'consumptions',
-            items: [
-              _buildMenuItem(
-                title: "Consumir",
-                subtitle: "Registrar consumiciones",
-                icon: Icons.fastfood,
-                color: mainColor,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProductScreen(
-                        userId: widget.userId,
-                        eventId: widget.eventId,
+        child: ListView(
+          children: [
+            StandardSection(
+              title: "Consumiciones",
+              icon: Icons.local_bar,
+              color: mainColor,
+              initiallyExpanded: expandedSection == 'consumptions',
+              onToggle: () => toggleSection('consumptions'),
+              children: [
+                _buildMenuItem(
+                  title: "Consumir",
+                  subtitle: "Registrar consumiciones",
+                  icon: Icons.fastfood,
+                  color: mainColor,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductScreen(
+                          userId: widget.userId,
+                          eventId: widget.eventId,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-              _buildMenuItem(
-                title: "Mis consumiciones",
-                subtitle: "Ver lo que has consumido",
-                icon: Icons.receipt_long,
-                color: Colors.grey[800]!,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ConsumptionScreen(
-                        userId: widget.userId,
-                        eventId: widget.eventId,
+                    );
+                  },
+                ),
+                _buildMenuItem(
+                  title: "Mis consumiciones",
+                  subtitle: "Ver lo que has consumido",
+                  icon: Icons.receipt_long,
+                  color: Colors.grey[800]!,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ConsumptionScreen(
+                          userId: widget.userId,
+                          eventId: widget.eventId,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          _buildSection(
-            context: context,
-            icon: Icons.receipt,
-            title: "Gastos",
-            color: orangeColor,
-            sectionKey: 'expenses',
-            isExpanded: expandedSection == 'expenses',
-            items: [
-              _buildMenuItem(
-                title: "Registrar gasto",
-                subtitle: "Registrar un gasto",
-                icon: Icons.add_circle,
-                color: orangeColor,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => UploadExpenseScreen(
-                        userId: widget.userId,
-                        eventId: widget.eventId,
+                    );
+                  },
+                ),
+              ],
+            ),
+            StandardSection(
+              title: "Gastos",
+              icon: Icons.receipt,
+              color: accentColor,
+              initiallyExpanded: expandedSection == 'expenses',
+              onToggle: () => toggleSection('expenses'),
+              children: [
+                _buildMenuItem(
+                  title: "Registrar gasto",
+                  subtitle: "Registrar un gasto",
+                  icon: Icons.add_circle,
+                  color: accentColor,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => UploadExpenseScreen(
+                          userId: widget.userId,
+                          eventId: widget.eventId,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-              _buildMenuItem(
-                title: "Ver gastos",
-                subtitle: "Ver gastos registrados",
-                icon: Icons.table_chart,
-                color: Colors.grey[800]!,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ExpenseListScreen(
-                        userId: widget.userId,
-                        eventId: widget.eventId,
+                    );
+                  },
+                ),
+                _buildMenuItem(
+                  title: "Ver gastos",
+                  subtitle: "Ver gastos registrados",
+                  icon: Icons.table_chart,
+                  color: Colors.grey[800]!,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ExpenseListScreen(
+                          userId: widget.userId,
+                          eventId: widget.eventId,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-              _buildMenuItem(
-                title: "Resumen total",
-                subtitle: "Ver gastos totales",
-                icon: Icons.group,
-                color: orangeColor,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CommonSummaryScreen(
-                        userId: widget.userId,
-                        eventId: widget.eventId,
+                    );
+                  },
+                ),
+                _buildMenuItem(
+                  title: "Resumen total",
+                  subtitle: "Ver gastos totales",
+                  icon: Icons.group,
+                  color: accentColor,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CommonSummaryScreen(
+                          userId: widget.userId,
+                          eventId: widget.eventId,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSection({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required Color color,
-    required String sectionKey,
-    required bool isExpanded,
-    required List<Widget> items,
-  }) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 6,
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-          childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          initiallyExpanded: isExpanded,
-          onExpansionChanged: (_) => toggleSection(sectionKey),
-          leading: CircleAvatar(
-            backgroundColor: color.withOpacity(0.1),
-            child: Icon(icon, color: color),
-          ),
-          title: Text(
-            title,
-            style: TextStyle(fontWeight: FontWeight.bold, color: color),
-          ),
-          children: items,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -194,12 +165,10 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
+    return StandardCard(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 0),
         leading: CircleAvatar(
           backgroundColor: color.withOpacity(0.1),
           child: Icon(icon, color: color),

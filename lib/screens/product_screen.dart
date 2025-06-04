@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/widgets/standard_section.dart';
 
 class ProductScreen extends StatefulWidget {
   final int userId;
@@ -29,7 +31,6 @@ class _ProductScreenState extends State<ProductScreen> {
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-
       final Map<String, List<dynamic>> grouped = {};
       final Map<String, bool> expandStates = {};
 
@@ -48,8 +49,6 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   void registerConsumption(int productId, double price) async {
-    print("Llamando a registerConsumption");
-
     try {
       final body = jsonEncode({
         "user_id": widget.userId,
@@ -59,40 +58,34 @@ class _ProductScreenState extends State<ProductScreen> {
       });
 
       final res = await http.post(
-        Uri.parse('$baseUrl/api/consumptions'), // si estás en Android
+        Uri.parse('$baseUrl/api/consumptions'),
         headers: {"Content-Type": "application/json"},
         body: body,
       );
 
-      print("Status code: ${res.statusCode}");
-      print("Response body: ${res.body}");
-
       if (res.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Consumición registrada"),
-            backgroundColor: Color(0xFFD32F2F),
+            content: const Text("Consumición registrada"),
+            backgroundColor: const Color(0xFFD32F2F),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
     } catch (e) {
-      print("Error al hacer la petición: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error de red: $e")),
       );
     }
   }
 
-
   Widget buildProductTile(dynamic p, Color mainColor) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 5,
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    return StandardCard(
+      elevation: 3,
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
         leading: p['image_url'] != null
             ? ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -105,10 +98,7 @@ class _ProductScreenState extends State<ProductScreen> {
           ),
         )
             : Icon(Icons.local_drink, color: mainColor),
-        title: Text(
-          p['name'],
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: Text(p['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text("Precio base: €${p['unit_price']}"),
         trailing: IconButton(
           icon: Icon(Icons.add_circle, color: mainColor, size: 32),
@@ -121,38 +111,33 @@ class _ProductScreenState extends State<ProductScreen> {
   Widget buildAccordion(String typology, List products, bool expanded, ValueChanged<bool> onToggle, Color mainColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        children: [
-          ListTile(
-            tileColor: Colors.grey[100],
-            title: Text(
-              typology,
-              style: TextStyle(fontWeight: FontWeight.bold, color: mainColor),
-            ),
-            trailing: Icon(
-              expanded ? Icons.expand_less : Icons.expand_more,
-              color: mainColor,
-            ),
-            onTap: () => onToggle(!expanded),
-          ),
-          if (expanded) ...products.map((p) => buildProductTile(p, mainColor)).toList(),
-        ],
+      child: StandardSection(
+        title: typology,
+        icon: Icons.fastfood,
+        color: mainColor,
+        initiallyExpanded: expanded,
+        onToggle: () => onToggle(!expanded),
+        children: products.map<Widget>((p) => buildProductTile(p, mainColor)).toList(),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color mainColor = Color(0xFFD32F2F);
+    final Color mainColor = const Color(0xFFD32F2F);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("Consumiciones"),
+        title: const Text("Productos",style: TextStyle(color: Colors.white)),
         backgroundColor: mainColor,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: groupedProducts.isEmpty
-          ? Center(child: Text("No hay productos disponibles"))
+          ? const Center(child: Text("No hay productos disponibles"))
           : ListView(
+        padding: const EdgeInsets.all(16),
         children: groupedProducts.entries.map((entry) {
           final typology = entry.key;
           final products = entry.value;
