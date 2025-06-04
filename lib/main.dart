@@ -19,9 +19,7 @@ const firebaseConfig = FirebaseOptions(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   print("🌐 BASE_URL: ${AppConfig.baseUrl}");
-
   await Firebase.initializeApp(options: firebaseConfig);
   runApp(MyApp());
 }
@@ -37,52 +35,106 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final String baseUrl = AppConfig.baseUrl;
 
-  Future<void> _signInWithGoogle(BuildContext context) async {
-    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-    final GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool isLogin = true;
 
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth?.accessToken,
-      idToken: googleAuth?.idToken,
-    );
+  Future<void> _signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
 
-    final userCredential = await _auth.signInWithCredential(credential);
-    final email = userCredential.user?.email ?? '';
-    final name = userCredential.user?.displayName ?? '';
-
-    final existingUser = await _getUserByEmail(email);
-    Map<String, dynamic>? backendUser;
-
-    if (existingUser != null) {
-      backendUser = existingUser;
-    } else {
-      backendUser = await _registerOrLoginBackendUser(name, email);
-    }
-
-    if (backendUser != null) {
-      print("✅ Navegando a EventScreen con userId: ${backendUser['id']}");
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => EventScreen(userId: backendUser?['id'] ?? 0),
-        ),
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth?.accessToken,
+        idToken: googleAuth?.idToken,
       );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      final email = userCredential.user?.email ?? '';
+      final name = userCredential.user?.displayName ?? '';
+
+      final existingUser = await _getUserByEmail(email);
+      Map<String, dynamic>? backendUser;
+
+      if (existingUser != null) {
+        backendUser = existingUser;
+      } else {
+        backendUser = await _registerOrLoginBackendUser(name, email);
+      }
+
+      _navigateToEventScreen(backendUser);
+    } catch (e) {
+      _showError('Error al iniciar sesión con Google: $e');
     }
   }
 
-  Future<Map<String, dynamic>?> _registerOrLoginBackendUser(String username, String email) async {
+  Future<void> _signInWithEmailAndPassword() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _showError("Completa todos los campos.");
+      return;
+    }
+
+    try {
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final backendUser = await _getUserByEmail(email);
+      _navigateToEventScreen(backendUser);
+    } catch (e) {
+      _showError('Error de inicio de sesión: $e');
+    }
+  }
+
+  Future<void> _registerWithEmailAndPassword() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+
+    print("📩 Email: $email");
+    print("🔑 Password: $password");
+
+    if (email.isEmpty || password.isEmpty) {
+      _showError("Completa todos los campos.");
+      return;
+    }
+
+    if (password.length < 6) {
+      _showError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
+    try {
+      print("🛠 Intentando registrar en Firebase...");
+      await _auth.createUserWithEmailAndPassword(email: email, password: password);
+
+      print("✅ Registro en Firebase OK. Registrando en backend...");
+      final backendUser = await _registerOrLoginBackendUser(email.split('@').first, email, password);
+      print("➡️ backendUser: $backendUser");
+
+      _navigateToEventScreen(backendUser);
+    } catch (e) {
+      print("❌ Error de Firebase: $e");
+      _showError('Error al registrarse: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> _registerOrLoginBackendUser(String username, String email, [String password = 'from_google']) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/users'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'username': username,
         'email': email,
-        'password_hash': 'from_google',
+        'password_hash': password,
       }),
     );
 
@@ -93,12 +145,32 @@ class LoginScreen extends StatelessWidget {
   }
 
   Future<Map<String, dynamic>?> _getUserByEmail(String email) async {
-    final response = await http.get(Uri.parse('$baseUrl/api/users?email=$email'));
+    final response = await http.get(Uri.parse('$baseUrl/api/users/by-email?email=$email'));
     if (response.statusCode == 200) {
-      final users = jsonDecode(response.body) as List;
-      if (users.isNotEmpty) return users.first;
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
     return null;
+  }
+
+  void _navigateToEventScreen(Map<String, dynamic>? backendUser) {
+    if (backendUser != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EventScreen(userId: backendUser['id']),
+        ),
+      );
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -119,29 +191,49 @@ class LoginScreen extends StatelessWidget {
             margin: EdgeInsets.symmetric(horizontal: 32),
             child: Padding(
               padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'assets/logo.png',
-                    height: 150,
-                  ),
-                  Text(
-                    "Inicia sesión para continuar",
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
-                  SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      backgroundColor: Color(0xFFD32F2F),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset('assets/logo.png', height: 150),
+                    Text(
+                      isLogin ? "Inicia sesión para continuar" : "Crea una cuenta",
+                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                     ),
-                    icon: Icon(Icons.login),
-                    label: Text("Iniciar sesión con Google"),
-                    onPressed: () => _signInWithGoogle(context),
-                  ),
-                ],
+                    SizedBox(height: 24),
+                    TextField(
+                      controller: emailController,
+                      decoration: InputDecoration(labelText: "Email"),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: passwordController,
+                      decoration: InputDecoration(labelText: "Contraseña"),
+                      obscureText: true,
+                    ),
+                    SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: isLogin ? _signInWithEmailAndPassword : _registerWithEmailAndPassword,
+                      child: Text(isLogin ? "Iniciar sesión" : "Registrarse"),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => isLogin = !isLogin),
+                      child: Text(isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"),
+                    ),
+                    //Divider(),
+                    //ElevatedButton.icon(
+                    //  style: ElevatedButton.styleFrom(
+                    //    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    //    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    //    backgroundColor: Color(0xFFD32F2F),
+                    //  ),
+                    //  icon: Icon(Icons.login),
+                    //  label: Text("Iniciar sesión con Google"),
+                    //  onPressed: _signInWithGoogle,
+                    //),
+                  ],
+                ),
               ),
             ),
           ),
