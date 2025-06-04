@@ -1,7 +1,10 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart'; // <-- necesario para MediaType
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
 
@@ -25,6 +28,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
   File? _selectedImage;
+  Uint8List? _webImageBytes;
   bool _isSubmitting = false;
   bool _isShared = false;
   final baseUrl = AppConfig.baseUrl;
@@ -33,9 +37,18 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      setState(() {
-        _selectedImage = File(picked.path);
-      });
+      if (kIsWeb) {
+        final bytes = await picked.readAsBytes();
+        setState(() {
+          _webImageBytes = bytes;
+          _selectedImage = null;
+        });
+      } else {
+        setState(() {
+          _selectedImage = File(picked.path);
+          _webImageBytes = null;
+        });
+      }
     }
   }
 
@@ -53,7 +66,14 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
       ..fields['notes'] = _notesController.text
       ..fields['is_shared'] = _isShared.toString();
 
-    if (_selectedImage != null) {
+    if (kIsWeb && _webImageBytes != null) {
+      request.files.add(http.MultipartFile.fromBytes(
+        'image',
+        _webImageBytes!,
+        filename: 'upload.png',
+        contentType: MediaType('image', 'png'),
+      ));
+    } else if (_selectedImage != null) {
       request.files.add(await http.MultipartFile.fromPath('image', _selectedImage!.path));
     }
 
@@ -67,6 +87,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
       _notesController.clear();
       setState(() {
         _selectedImage = null;
+        _webImageBytes = null;
         _isShared = false;
       });
 
@@ -95,7 +116,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Nuevo gasto",style: TextStyle(color: Colors.white)),
+        title: const Text("Nuevo gasto", style: TextStyle(color: Colors.white)),
         backgroundColor: mainColor,
         elevation: 0,
         centerTitle: true,
@@ -141,11 +162,13 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
                         style: TextStyle(color: mainColor),
                       ),
                     ),
-                    if (_selectedImage != null)
+                    if (_selectedImage != null || _webImageBytes != null)
                       Container(
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         height: 150,
-                        child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                        child: kIsWeb
+                            ? Image.memory(_webImageBytes!, fit: BoxFit.cover)
+                            : Image.file(_selectedImage!, fit: BoxFit.cover),
                       ),
                     const SizedBox(height: 20),
                     ElevatedButton(
