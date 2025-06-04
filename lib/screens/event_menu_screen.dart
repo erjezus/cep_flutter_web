@@ -4,6 +4,8 @@ import 'package:cep_flutter_web/screens/consumption_screen.dart';
 import 'package:cep_flutter_web/screens/upload_expense_screen.dart';
 import 'package:cep_flutter_web/screens/expense_list_screen.dart';
 import 'package:cep_flutter_web/screens/common_summary_screen.dart';
+import 'package:cep_flutter_web/screens/lunch_list_screen.dart';
+import 'package:cep_flutter_web/screens/create_lunch_screen.dart'; // Importa la pantalla crear almuerzo
 import 'package:cep_flutter_web/widgets/standard_card.dart';
 import 'package:cep_flutter_web/widgets/standard_section.dart';
 
@@ -92,6 +94,49 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                 ),
               ],
             ),
+
+            StandardSection(
+              title: "Almuerzos",
+              icon: Icons.lunch_dining,
+              color: Colors.green[700]!,
+              initiallyExpanded: expandedSection == 'lunches',
+              onToggle: () => toggleSection('lunches'),
+              children: [
+                _buildMenuItem(
+                  title: "Crear almuerzo",
+                  subtitle: "Añadir un nuevo almuerzo",
+                  icon: Icons.add,
+                  color: Colors.green[700]!,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CreateLunchScreen(
+                          eventId: widget.eventId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                _buildMenuItem(
+                  title: "Gestionar almuerzos",
+                  subtitle: "Ver y editar almuerzos existentes",
+                  icon: Icons.event_note,
+                  color: Colors.green[700]!,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LunchListScreen(
+                          eventId: widget.eventId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+
             StandardSection(
               title: "Gastos",
               icon: Icons.receipt,
