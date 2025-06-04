@@ -62,6 +62,9 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   }
 
   Widget buildExpenseTile(dynamic e, Color mainColor) {
+    final imagePath = e['image_path'];
+    final hasImage = imagePath != null && imagePath.toString().isNotEmpty;
+
     return StandardCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
@@ -90,7 +93,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               onPressed: () => deleteExpense(e['id'], e['is_common'] == true),
             ),
           ),
-          if (e['image_path'] != null && e['image_path'].toString().isNotEmpty)
+          if (hasImage)
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
@@ -101,9 +104,10 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                     context: context,
                     builder: (_) => AlertDialog(
                       content: Image.network(
-                        '$baseUrl${e['image_path']}',
+                        imagePath, // usamos la URL completa tal cual viene
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Text("No se pudo cargar la imagen"),
+                        errorBuilder: (_, __, ___) =>
+                        const Text("No se pudo cargar la imagen"),
                       ),
                     ),
                   );
@@ -114,7 +118,6 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       ),
     );
   }
-
 
   Widget buildAccordion(String title, bool expanded, ValueChanged<bool> onToggle, List items, Color mainColor) {
     return Padding(
@@ -139,7 +142,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Hoja de gastos",style: TextStyle(color: Colors.white)),
+        title: const Text("Hoja de gastos", style: TextStyle(color: Colors.white)),
         backgroundColor: mainColor,
         elevation: 0,
         centerTitle: true,
