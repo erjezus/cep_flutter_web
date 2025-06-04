@@ -64,42 +64,57 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   Widget buildExpenseTile(dynamic e, Color mainColor) {
     return StandardCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: ListTile(
-        leading: e['image_path'] != null
-            ? ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            '$baseUrl/api/${e['image_path']}',
-            width: 50,
-            height: 50,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Icon(Icons.receipt, color: mainColor),
-          ),
-        )
-            : Icon(Icons.receipt, color: mainColor),
-        title: Text(
-          e['concept'],
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("€${e['amount']}"),
-            if (e['notes'] != null && e['notes'].toString().isNotEmpty)
-              Text(e['notes'], style: TextStyle(color: Colors.grey[700])),
-            Text(
-              e['created_at'].toString().split('T')[0],
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            leading: Icon(Icons.receipt, color: mainColor),
+            title: Text(
+              e['concept'],
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-          ],
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete, color: Colors.red),
-          onPressed: () => deleteExpense(e['id'], e['is_common'] == true),
-        ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("€${e['amount']}"),
+                if (e['notes'] != null && e['notes'].toString().isNotEmpty)
+                  Text(e['notes'], style: TextStyle(color: Colors.grey[700])),
+                Text(
+                  e['created_at'].toString().split('T')[0],
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => deleteExpense(e['id'], e['is_common'] == true),
+            ),
+          ),
+          if (e['image_path'] != null && e['image_path'].toString().isNotEmpty)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                icon: Icon(Icons.image, color: mainColor),
+                label: Text('Ver imagen', style: TextStyle(color: mainColor)),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      content: Image.network(
+                        '$baseUrl${e['image_path']}',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Text("No se pudo cargar la imagen"),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
+
 
   Widget buildAccordion(String title, bool expanded, ValueChanged<bool> onToggle, List items, Color mainColor) {
     return Padding(
