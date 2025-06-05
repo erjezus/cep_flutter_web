@@ -155,12 +155,23 @@ class _LunchExpenseListScreenState extends State<LunchExpenseListScreen> {
         elevation: 0,
         centerTitle: true,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToAddExpense,
-        label: const Text("Añadir gasto"),
-        icon: const Icon(Icons.add),
-        backgroundColor: mainColor,
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 12, right: 12),
+        child: ElevatedButton.icon(
+          onPressed: _navigateToAddExpense,
+          icon: const Icon(Icons.add_circle_outline),
+          label: const Text("Añadir gasto", style: TextStyle(fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: mainColor,
+            foregroundColor: Colors.white,
+            elevation: 6,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            textStyle: const TextStyle(fontSize: 16),
+          ),
+        ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : expenses.isEmpty
