@@ -35,7 +35,7 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar participantes')),
+        const SnackBar(content: Text('Error al cargar participantes')),
       );
     }
     setState(() => isLoading = false);
@@ -45,14 +45,20 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
     final body = jsonEncode({'id': id, 'num_people': numPeople});
     final url = Uri.parse('$baseUrl/api/lunch_participants');
     final res = await http.put(url, body: body, headers: {'Content-Type': 'application/json'});
-    if (res.statusCode == 200) {
-      fetchParticipants();
-    } else {
+    if (res.statusCode != 200) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al actualizar comensales')),
+        const SnackBar(content: Text('Error al actualizar comensales')),
       );
     }
   }
+
+  int get totalComensales {
+    return participants.fold<int>(
+      0,
+          (sum, p) => sum + ((p['num_people'] ?? 0) as num).toInt(),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -70,31 +76,48 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
           ? const Center(child: Text('No hay participantes'))
           : ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: participants.length,
+        itemCount: participants.length + 1, // extra para el total
         itemBuilder: (context, index) {
+          if (index == participants.length) {
+            return StandardCard(
+              margin: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Total de comensales: $totalComensales',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            );
+          }
+
           final p = participants[index];
-          final controller = TextEditingController(text: p['num_people'].toString());
           return StandardCard(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             margin: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
               children: [
                 Expanded(
-                  child: Text('Usuario ID: ${p['user_id']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  child: Text('${p['username']}', style: const TextStyle(fontWeight: FontWeight.w600)),
                 ),
-                SizedBox(
-                  width: 80,
-                  child: TextFormField(
-                    controller: controller,
-                    decoration: const InputDecoration(labelText: 'Comensales'),
-                    keyboardType: TextInputType.number,
-                    onFieldSubmitted: (val) {
-                      final parsed = int.tryParse(val);
-                      if (parsed != null && parsed >= 0) {
-                        updateParticipant(p['id'], parsed);
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      onPressed: p['num_people'] > 0
+                          ? () {
+                        setState(() => p['num_people']--);
+                        updateParticipant(p['id'], p['num_people']);
                       }
-                    },
-                  ),
+                          : null,
+                    ),
+                    Text('${p['num_people']}', style: const TextStyle(fontSize: 16)),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: () {
+                        setState(() => p['num_people']++);
+                        updateParticipant(p['id'], p['num_people']);
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),

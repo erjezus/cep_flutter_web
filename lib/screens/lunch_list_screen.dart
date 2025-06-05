@@ -112,7 +112,6 @@ class _LunchListScreenState extends State<LunchListScreen> {
                   desc,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: Text('Fecha: $date'),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
