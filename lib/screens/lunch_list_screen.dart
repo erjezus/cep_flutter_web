@@ -6,11 +6,17 @@ import 'package:cep_flutter_web/widgets/standard_card.dart';
 import 'package:cep_flutter_web/screens/edit_lunch_screen.dart';
 import 'package:cep_flutter_web/screens/lunch_participants_screen.dart';
 import 'package:cep_flutter_web/screens/create_lunch_screen.dart';
+import 'package:cep_flutter_web/screens/lunch_expense_list_screen.dart';
 
 class LunchListScreen extends StatefulWidget {
+  final int userId;
   final int eventId;
 
-  const LunchListScreen({required this.eventId, super.key});
+  const LunchListScreen({
+    required this.userId,
+    required this.eventId,
+    super.key,
+  });
 
   @override
   State<LunchListScreen> createState() => _LunchListScreenState();
@@ -75,6 +81,15 @@ class _LunchListScreenState extends State<LunchListScreen> {
     );
   }
 
+  void _navigateToLunchExpenses(int lunchId) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LunchExpenseListScreen(lunchId: lunchId, userId: widget.userId, eventId: widget.eventId),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mainColor = const Color(0xFFD32F2F);
@@ -112,9 +127,15 @@ class _LunchListScreenState extends State<LunchListScreen> {
                   desc,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
+                subtitle: Text('Fecha: $date'),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.receipt_long),
+                      tooltip: 'Gastos',
+                      onPressed: () => _navigateToLunchExpenses(lunch['id']),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.group),
                       tooltip: 'Comensales',

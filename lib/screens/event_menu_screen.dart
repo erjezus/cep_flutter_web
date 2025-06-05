@@ -129,6 +129,7 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                       MaterialPageRoute(
                         builder: (_) => LunchListScreen(
                           eventId: widget.eventId,
+                          userId: widget.userId,
                         ),
                       ),
                     );
