@@ -73,6 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
   bool isLogin = true;
 
   Future<void> _signInWithGoogle() async {
@@ -125,8 +126,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _registerWithEmailAndPassword() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
+    final name = nameController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
+    if (email.isEmpty || password.isEmpty || name.isEmpty) {
       _showError("Completa todos los campos.");
       return;
     }
@@ -138,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await _auth.createUserWithEmailAndPassword(email: email, password: password);
-      final backendUser = await _registerOrLoginBackendUser(email.split('@').first, email, password);
+      final backendUser = await _registerOrLoginBackendUser(name, email, password);
       _navigateToEventScreen(backendUser);
     } catch (e) {
       _showError('Error al registrarse: $e');
@@ -203,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         child: Center(
-          child: StandardCard( // 👈 Sustituido
+          child: StandardCard(
             elevation: 12,
             padding: const EdgeInsets.all(32),
             margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -218,6 +220,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[800]),
                   ),
                   const SizedBox(height: 24),
+                  if (!isLogin)
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: "Nombre",
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                    ),
+                  if (!isLogin) const SizedBox(height: 12),
                   TextField(
                     controller: emailController,
                     decoration: const InputDecoration(

@@ -57,9 +57,21 @@ class _LunchExpenseListScreenState extends State<LunchExpenseListScreen> {
   }
 
   Future<void> deleteExpense(int id) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/api/expenses/$id'),
-    );
+    final unlinkUrl = Uri.parse('$baseUrl/api/expense_lunch?expense_id=$id&lunch_id=${widget.lunchId}');
+    final unlinkRes = await http.delete(unlinkUrl);
+
+    if (unlinkRes.statusCode != 204) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Error al desasociar gasto del almuerzo"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final response = await http.delete(Uri.parse('$baseUrl/api/expenses/$id'));
+
     if (response.statusCode == 200) {
       setState(() {
         expenses.removeWhere((e) => e['id'] == id);
@@ -70,8 +82,16 @@ class _LunchExpenseListScreenState extends State<LunchExpenseListScreen> {
           backgroundColor: Color(0xFFD32F2F),
         ),
       );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Error al eliminar el gasto"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
+
 
   void _navigateToAddExpense() async {
     final result = await Navigator.push(

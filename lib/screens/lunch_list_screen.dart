@@ -50,6 +50,23 @@ class _LunchListScreenState extends State<LunchListScreen> {
     setState(() => isLoading = false);
   }
 
+  Future<int> fetchParticipantCount(int lunchId) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/api/lunch_participants?lunch_id=$lunchId'),
+    );
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      if (data is List) {
+        int total = 0;
+        for (final p in data) {
+          total += (p['num_people'] ?? 1) as int;
+        }
+        return total;
+      }
+    }
+    return 0;
+  }
+
   void _navigateToCreate() async {
     final result = await Navigator.push(
       context,
@@ -116,40 +133,47 @@ class _LunchListScreenState extends State<LunchListScreen> {
             : ListView(
           padding: const EdgeInsets.all(16),
           children: lunches.map((lunch) {
-            final date = lunch['date']?.toString().split('T')[0] ?? '';
             final desc = lunch['description'] ?? '';
-            return StandardCard(
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              padding: const EdgeInsets.all(12),
-              child: ListTile(
-                title: Text(
-                  desc,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text('Fecha: $date'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.receipt_long),
-                      tooltip: 'Gastos',
-                      onPressed: () => _navigateToLunchExpenses(lunch['id']),
+            return FutureBuilder<int>(
+              future: fetchParticipantCount(lunch['id']),
+              builder: (context, snapshot) {
+                final subtitle = snapshot.hasData
+                    ? '${snapshot.data} comensales'
+                    : 'Cargando...';
+                return StandardCard(
+                  elevation: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.all(12),
+                  child: ListTile(
+                    title: Text(
+                      desc,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.group),
-                      tooltip: 'Comensales',
-                      onPressed: () => _navigateToParticipants(lunch['id']),
+                    subtitle: Text(subtitle),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.receipt_long),
+                          tooltip: 'Gastos',
+                          onPressed: () => _navigateToLunchExpenses(lunch['id']),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.group),
+                          tooltip: 'Comensales',
+                          onPressed: () => _navigateToParticipants(lunch['id']),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          tooltip: 'Editar',
+                          onPressed: () => _navigateToEdit(lunch),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      tooltip: 'Editar',
-                      onPressed: () => _navigateToEdit(lunch),
-                    ),
-                  ],
-                ),
-                onTap: () => _navigateToParticipants(lunch['id']),
-              ),
+                    onTap: () => _navigateToParticipants(lunch['id']),
+                  ),
+                );
+              },
             );
           }).toList(),
         ),
