@@ -1,11 +1,11 @@
-import 'package:cep_flutter_web/screens/product_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:cep_flutter_web/screens/product_screen.dart';
 import 'package:cep_flutter_web/screens/consumption_screen.dart';
 import 'package:cep_flutter_web/screens/upload_expense_screen.dart';
 import 'package:cep_flutter_web/screens/expense_list_screen.dart';
 import 'package:cep_flutter_web/screens/common_summary_screen.dart';
 import 'package:cep_flutter_web/screens/lunch_list_screen.dart';
-import 'package:cep_flutter_web/screens/create_lunch_screen.dart'; // Importa la pantalla crear almuerzo
+import 'package:cep_flutter_web/screens/create_lunch_screen.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
 import 'package:cep_flutter_web/widgets/standard_section.dart';
 
@@ -51,6 +51,90 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
+            // Accesos directos
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Accesos directos",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        _buildQuickAccess(
+                          icon: Icons.fastfood,
+                          label: "Consumir",
+                          color: mainColor,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProductScreen(
+                                userId: widget.userId,
+                                eventId: widget.eventId,
+                              ),
+                            ),
+                          ),
+                        ),
+                        _buildQuickAccess(
+                          icon: Icons.receipt_long,
+                          label: "Mis consumos",
+                          color: Colors.grey[800]!,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ConsumptionScreen(
+                                userId: widget.userId,
+                                eventId: widget.eventId,
+                              ),
+                            ),
+                          ),
+                        ),
+                        _buildQuickAccess(
+                          icon: Icons.add_circle,
+                          label: "Añadir gasto",
+                          color: accentColor,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UploadExpenseScreen(
+                                userId: widget.userId,
+                                eventId: widget.eventId,
+                              ),
+                            ),
+                          ),
+                        ),
+                        _buildQuickAccess(
+                          icon: Icons.event_note,
+                          label: "Almuerzos",
+                          color: Colors.green[700]!,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LunchListScreen(
+                                eventId: widget.eventId,
+                                userId: widget.userId,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Secciones normales
             StandardSection(
               title: "Consumiciones",
               icon: Icons.local_bar,
@@ -63,38 +147,33 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                   subtitle: "Registrar consumiciones",
                   icon: Icons.fastfood,
                   color: mainColor,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProductScreen(
-                          userId: widget.userId,
-                          eventId: widget.eventId,
-                        ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProductScreen(
+                        userId: widget.userId,
+                        eventId: widget.eventId,
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
                 _buildMenuItem(
                   title: "Mis consumiciones",
                   subtitle: "Ver lo que has consumido",
                   icon: Icons.receipt_long,
                   color: Colors.grey[800]!,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ConsumptionScreen(
-                          userId: widget.userId,
-                          eventId: widget.eventId,
-                        ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ConsumptionScreen(
+                        userId: widget.userId,
+                        eventId: widget.eventId,
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ],
             ),
-
             StandardSection(
               title: "Almuerzos",
               icon: Icons.lunch_dining,
@@ -107,37 +186,30 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                   subtitle: "Añadir un nuevo almuerzo",
                   icon: Icons.add,
                   color: Colors.green[700]!,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CreateLunchScreen(
-                          eventId: widget.eventId,
-                        ),
-                      ),
-                    );
-                  },
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CreateLunchScreen(eventId: widget.eventId),
+                    ),
+                  ),
                 ),
                 _buildMenuItem(
                   title: "Gestionar almuerzos",
                   subtitle: "Ver y editar almuerzos existentes",
                   icon: Icons.event_note,
                   color: Colors.green[700]!,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => LunchListScreen(
-                          eventId: widget.eventId,
-                          userId: widget.userId,
-                        ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LunchListScreen(
+                        eventId: widget.eventId,
+                        userId: widget.userId,
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ],
             ),
-
             StandardSection(
               title: "Gastos",
               icon: Icons.receipt,
@@ -150,51 +222,45 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                   subtitle: "Registrar un gasto",
                   icon: Icons.add_circle,
                   color: accentColor,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => UploadExpenseScreen(
-                          userId: widget.userId,
-                          eventId: widget.eventId,
-                        ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => UploadExpenseScreen(
+                        userId: widget.userId,
+                        eventId: widget.eventId,
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
                 _buildMenuItem(
                   title: "Ver gastos",
                   subtitle: "Ver gastos registrados",
                   icon: Icons.table_chart,
                   color: Colors.grey[800]!,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ExpenseListScreen(
-                          userId: widget.userId,
-                          eventId: widget.eventId,
-                        ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ExpenseListScreen(
+                        userId: widget.userId,
+                        eventId: widget.eventId,
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
                 _buildMenuItem(
                   title: "Resumen total",
                   subtitle: "Ver gastos totales",
                   icon: Icons.group,
                   color: accentColor,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CommonSummaryScreen(
-                          userId: widget.userId,
-                          eventId: widget.eventId,
-                        ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CommonSummaryScreen(
+                        userId: widget.userId,
+                        eventId: widget.eventId,
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -223,6 +289,29 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey),
         onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildQuickAccess({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: color.withOpacity(0.1),
+            child: Icon(icon, size: 28, color: color),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(fontSize: 13)),
+        ],
       ),
     );
   }
