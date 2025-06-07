@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
 import 'package:cep_flutter_web/widgets/standard_section.dart';
+import 'package:cep_flutter_web/screens/consumption_screen.dart';
 
 class ProductScreen extends StatefulWidget {
   final int userId;
@@ -48,13 +49,13 @@ class _ProductScreenState extends State<ProductScreen> {
     }
   }
 
-  void registerConsumption(int productId, double price) async {
+  void registerConsumption(int productId, int quantity) async {
     try {
       final body = jsonEncode({
         "user_id": widget.userId,
         "product_id": productId,
         "event_id": widget.eventId,
-        "quantity": 1
+        "quantity": quantity,
       });
 
       final res = await http.post(
@@ -80,6 +81,90 @@ class _ProductScreenState extends State<ProductScreen> {
     }
   }
 
+  void showQuantityDialog(int productId, String productName) {
+    int quantity = 1;
+    final controller = TextEditingController(text: quantity.toString());
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Center(
+          child: Text(
+            "Añadir $productName",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Selecciona la cantidad", style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: () {
+                    if (quantity > 1) {
+                      quantity--;
+                      controller.text = quantity.toString();
+                    }
+                  },
+                ),
+                SizedBox(
+                  width: 60,
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 18),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    onChanged: (value) {
+                      final parsed = int.tryParse(value);
+                      if (parsed != null && parsed > 0) {
+                        quantity = parsed;
+                      }
+                    },
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: () {
+                    quantity++;
+                    controller.text = quantity.toString();
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cancelar"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD32F2F),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.check),
+            label: const Text("Confirmar"),
+            onPressed: () {
+              registerConsumption(productId, quantity);
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+
   Widget buildProductTile(dynamic p, Color mainColor) {
     return StandardCard(
       elevation: 3,
@@ -102,7 +187,7 @@ class _ProductScreenState extends State<ProductScreen> {
         subtitle: Text("Precio base: €${p['unit_price']}"),
         trailing: IconButton(
           icon: Icon(Icons.add_circle, color: mainColor, size: 32),
-          onPressed: () => registerConsumption(p['id'], p['unit_price']),
+          onPressed: () => showQuantityDialog(p['id'], p['name']),
         ),
       ),
     );
@@ -129,7 +214,7 @@ class _ProductScreenState extends State<ProductScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Productos",style: TextStyle(color: Colors.white)),
+        title: const Text("Productos", style: TextStyle(color: Colors.white)),
         backgroundColor: mainColor,
         elevation: 0,
         centerTitle: true,
@@ -152,6 +237,23 @@ class _ProductScreenState extends State<ProductScreen> {
           );
         }).toList(),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: mainColor,
+        icon: const Icon(Icons.receipt_long),
+        label: const Text('Mis consumiciones'),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ConsumptionScreen(
+                userId: widget.userId,
+                eventId: widget.eventId,
+              ),
+            ),
+          );
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
