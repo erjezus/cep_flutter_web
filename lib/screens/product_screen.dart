@@ -164,7 +164,6 @@ class _ProductScreenState extends State<ProductScreen> {
     );
   }
 
-
   Widget buildProductTile(dynamic p, Color mainColor) {
     return StandardCard(
       elevation: 3,
@@ -222,7 +221,7 @@ class _ProductScreenState extends State<ProductScreen> {
       body: groupedProducts.isEmpty
           ? const Center(child: Text("No hay productos disponibles"))
           : ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         children: groupedProducts.entries.map((entry) {
           final typology = entry.key;
           final products = entry.value;
@@ -237,21 +236,34 @@ class _ProductScreenState extends State<ProductScreen> {
           );
         }).toList(),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: mainColor,
-        icon: const Icon(Icons.receipt_long),
-        label: const Text('Mis consumiciones'),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ConsumptionScreen(
-                userId: widget.userId,
-                eventId: widget.eventId,
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 12, right: 12),
+        child: ElevatedButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ConsumptionScreen(
+                  userId: widget.userId,
+                  eventId: widget.eventId,
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+          icon: const Icon(Icons.receipt_long),
+          label: const Text(
+            "Mis consumiciones",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: mainColor,
+            foregroundColor: Colors.white,
+            elevation: 6,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            textStyle: const TextStyle(fontSize: 16),
+          ),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
