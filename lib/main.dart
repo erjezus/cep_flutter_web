@@ -20,12 +20,18 @@ const firebaseConfig = FirebaseOptions(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  print("\u{1F310} BASE_URL: ${AppConfig.baseUrl}");
   await Firebase.initializeApp(options: firebaseConfig);
-  runApp(MyApp());
+  final user = FirebaseAuth.instance.currentUser;
+
+  runApp(MyApp(isLoggedIn: user != null, userEmail: user?.email));
 }
 
 class MyApp extends StatelessWidget {
+  final bool isLoggedIn;
+  final String? userEmail;
+
+  const MyApp({required this.isLoggedIn, this.userEmail});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -57,10 +63,34 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: LoginScreen(),
+      home: isLoggedIn && userEmail != null
+          ? FutureBuilder<Map<String, dynamic>?>(
+        future: _getUserByEmail(userEmail!),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Scaffold(body: Center(child: CircularProgressIndicator()));
+          }
+          final backendUser = snapshot.data;
+          if (backendUser != null) {
+            return EventScreen(userId: backendUser['id']);
+          } else {
+            return LoginScreen();
+          }
+        },
+      )
+          : LoginScreen(),
     );
   }
+
+  Future<Map<String, dynamic>?> _getUserByEmail(String email) async {
+    final response = await http.get(Uri.parse('${AppConfig.baseUrl}/api/users/by-email?email=$email'));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return null;
+  }
 }
+
 
 class LoginScreen extends StatefulWidget {
   @override
