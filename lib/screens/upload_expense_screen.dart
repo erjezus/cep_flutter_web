@@ -8,6 +8,17 @@ import 'package:http_parser/http_parser.dart'; // <-- necesario para MediaType
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
 
+// ... imports sin cambios
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/widgets/standard_card.dart';
+
 class UploadExpenseScreen extends StatefulWidget {
   final int userId;
   final int eventId;
@@ -33,9 +44,10 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
   bool _isShared = false;
   final baseUrl = AppConfig.baseUrl;
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
+    final picked = await picker.pickImage(source: source);
+
     if (picked != null) {
       if (kIsWeb) {
         final bytes = await picked.readAsBytes();
@@ -50,6 +62,36 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
         });
       }
     }
+  }
+
+  void _showImageSourceSelector() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Tomar foto'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Seleccionar de galería'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _submitExpense() async {
@@ -155,7 +197,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
                       activeColor: mainColor,
                     ),
                     TextButton.icon(
-                      onPressed: _isSubmitting ? null : _pickImage,
+                      onPressed: _isSubmitting ? null : _showImageSourceSelector,
                       icon: Icon(Icons.attach_file, color: mainColor),
                       label: Text(
                         "Seleccionar imagen (opcional)",
@@ -198,3 +240,4 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
     );
   }
 }
+
