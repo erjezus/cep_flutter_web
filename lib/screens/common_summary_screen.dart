@@ -21,6 +21,7 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
   double globalFoodConsumed = 0.0;
   double globalFoodSpent = 0.0;
   double depositExpenses = 0.0;
+  double totalPaidExpenses = 0.0;
 
   double totalCommonExpenses = 0.0;
   int userCount = 0;
@@ -49,6 +50,7 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
       final usersRes = await http.get(Uri.parse('$baseUrl/api/users/count'));
       final lunchCostsRes = await http.get(Uri.parse('$baseUrl/api/summary/lunch-costs?eventId=${widget.eventId}&userId=${widget.userId}'));
       final depositRes = await http.get(Uri.parse('$baseUrl/api/summary/deposit?eventId=${widget.eventId}&userId=${widget.userId}'));
+      final paidExpensesRes = await http.get(Uri.parse('$baseUrl/api/summary/paid?eventId=${widget.eventId}&userId=${widget.userId}'));
 
       if (foodRes.statusCode == 200 &&
           drinkRes.statusCode == 200 &&
@@ -57,7 +59,8 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
           commonExpensesRes.statusCode == 200 &&
           usersRes.statusCode == 200 &&
           lunchCostsRes.statusCode == 200 &&
-          depositRes.statusCode == 200) {
+          depositRes.statusCode == 200 &&
+          paidExpensesRes.statusCode == 200) {
 
         final foodData = jsonDecode(foodRes.body);
         final drinkData = jsonDecode(drinkRes.body);
@@ -67,6 +70,7 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
         final usersData = jsonDecode(usersRes.body);
         final lunchData = jsonDecode(lunchCostsRes.body);
         final depositData = jsonDecode(depositRes.body);
+        final paidData = jsonDecode(paidExpensesRes.body);
 
         final totalCommon = (commonData['total_common'] ?? 0).toDouble();
         final users = (usersData['total_users'] ?? 0).toInt();
@@ -79,6 +83,7 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
           globalFoodConsumed = (globalFoodData['total_consumed'] ?? 0).toDouble();
           globalFoodSpent = (globalFoodData['total_spent'] ?? 0).toDouble();
           depositExpenses = (depositData['total_deposit'] ?? 0).toDouble();
+          totalPaidExpenses = (paidData['total_paid'] ?? 0).toDouble();
 
           totalCommonExpenses = totalCommon;
           userCount = users;
@@ -152,6 +157,8 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
     final diferenciaComida = globalFoodSpent - globalFoodConsumed;
     final perdidaBebidaUsuario = userCount > 0 ? diferenciaBebida / userCount : 0.0;
     final perdidaComidaUsuario = userCount > 0 ? diferenciaComida / userCount : 0.0;
+    final costeUsuarioAlmuerzos = lunchCosts.fold<double>(0.0, (sum, item) => sum + (item['user_cost'] ?? 0));
+    final totalFinal = total + costeUsuarioAlmuerzos + perdidaBebidaUsuario + perdidaComidaUsuario + commonPerUser - depositExpenses - totalPaidExpenses;
 
     return Scaffold(
       appBar: AppBar(
@@ -205,6 +212,20 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
             ]),
             buildSection("Gastos a cuenta", [
               buildRow("Total aportado por el usuario", "€${depositExpenses.toStringAsFixed(2)}", icon: Icons.account_balance_wallet),
+            ]),
+            buildSection("Gastos pagados", [
+              buildRow("Total marcado como pagado", "€${totalPaidExpenses.toStringAsFixed(2)}", icon: Icons.check_circle_outline, highlight: true),
+            ]),
+            buildSection("Resumen final", [
+              buildRow("Total consumido", "€${total.toStringAsFixed(2)}", icon: Icons.local_dining),
+              buildRow("Coste usuario almuerzos", "€${costeUsuarioAlmuerzos.toStringAsFixed(2)}", icon: Icons.lunch_dining),
+              buildRow("Pérdida por usuario (bebida)", "€${perdidaBebidaUsuario.toStringAsFixed(2)}", icon: Icons.local_bar),
+              buildRow("Pérdida por usuario (comida)", "€${perdidaComidaUsuario.toStringAsFixed(2)}", icon: Icons.restaurant),
+              buildRow("Parte por usuario de gastos comunes", "€${commonPerUser.toStringAsFixed(2)}", icon: Icons.group),
+              buildRow("Gastos a cuenta", "-€${depositExpenses.toStringAsFixed(2)}", icon: Icons.account_balance_wallet),
+              buildRow("Gastos pagados", "-€${totalPaidExpenses.toStringAsFixed(2)}", icon: Icons.check_circle_outline),
+              const Divider(),
+              buildRow("Total final", "€${totalFinal.toStringAsFixed(2)}", highlight: true, icon: Icons.summarize),
             ]),
           ],
         ),

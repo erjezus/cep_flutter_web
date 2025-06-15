@@ -33,6 +33,8 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
   File? _selectedImage;
   Uint8List? _webImageBytes;
   bool _isSubmitting = false;
+  bool _paid = false;
+
   final baseUrl = AppConfig.baseUrl;
 
   Future<void> _pickImage(ImageSource source) async {
@@ -101,10 +103,10 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
       ..fields['concept'] = _conceptController.text
       ..fields['amount'] = _amountController.text
       ..fields['notes'] = _notesController.text
-      ..fields['expense_type'] = 'Almuerzo';
+      ..fields['expense_type'] = 'Almuerzo'
+      ..fields['paid'] = _paid.toString();
 
     if (kIsWeb && _webImageBytes != null) {
-      debugPrint("🖼️ Añadiendo imagen desde Web");
       request.files.add(http.MultipartFile.fromBytes(
         'image',
         _webImageBytes!,
@@ -112,7 +114,6 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
         contentType: MediaType('image', 'png'),
       ));
     } else if (_selectedImage != null) {
-      debugPrint("🖼️ Añadiendo imagen desde dispositivo");
       request.files.add(await http.MultipartFile.fromPath('image', _selectedImage!.path));
     }
 
@@ -140,24 +141,18 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
           body: jsonEncode(payload),
         );
 
-        debugPrint("📬 Respuesta al enlazar gasto: ${linkRes.statusCode} - ${linkRes.body}");
-
         if (linkRes.statusCode == 201 || linkRes.statusCode == 200) {
           debugPrint("✅ Gasto enlazado al almuerzo correctamente");
         } else {
-          debugPrint("❌ Error al enlazar gasto: ${linkRes.body}");
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Error al enlazar gasto con almuerzo")),
           );
         }
-      } else {
-        debugPrint("❌ No se pudo obtener el ID del gasto");
       }
 
       if (mounted) Navigator.pop(context, true);
     } else {
       setState(() => _isSubmitting = false);
-      debugPrint("❌ Error al subir gasto: código ${res.statusCode}");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("❌ Error al subir el gasto"), backgroundColor: Colors.red),
       );
@@ -202,6 +197,13 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
                       controller: _notesController,
                       decoration: const InputDecoration(labelText: 'Observaciones (opcional)'),
                       maxLines: 3,
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: const Text('¿Pagado?'),
+                      value: _paid,
+                      onChanged: (val) => setState(() => _paid = val),
+                      activeColor: mainColor,
                     ),
                     TextButton.icon(
                       onPressed: _isSubmitting ? null : _showImageSourceSelector,

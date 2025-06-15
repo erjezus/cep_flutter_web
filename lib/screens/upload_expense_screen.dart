@@ -30,6 +30,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
   File? _selectedImage;
   Uint8List? _webImageBytes;
   bool _isSubmitting = false;
+  bool _isPaid = false;
   final baseUrl = AppConfig.baseUrl;
 
   final List<String> _expenseTypes = ['Común', 'Comida', 'Bebida', 'A cuenta'];
@@ -97,7 +98,8 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
       ..fields['concept'] = _conceptController.text
       ..fields['amount'] = _amountController.text
       ..fields['notes'] = _notesController.text
-      ..fields['expense_type'] = _selectedExpenseType!;
+      ..fields['expense_type'] = _selectedExpenseType!
+      ..fields['paid'] = _isPaid.toString();
 
     if (kIsWeb && _webImageBytes != null) {
       request.files.add(http.MultipartFile.fromBytes(
@@ -122,6 +124,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
         _selectedImage = null;
         _webImageBytes = null;
         _selectedExpenseType = null;
+        _isPaid = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -190,6 +193,13 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
                       controller: _notesController,
                       decoration: const InputDecoration(labelText: 'Observaciones (opcional)'),
                       maxLines: 3,
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      value: _isPaid,
+                      onChanged: (value) => setState(() => _isPaid = value),
+                      title: const Text("¿Pagado?"),
+                      activeColor: mainColor,
                     ),
                     TextButton.icon(
                       onPressed: _isSubmitting ? null : _showImageSourceSelector,
