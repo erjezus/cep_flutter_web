@@ -83,12 +83,35 @@ class MyApp extends StatelessWidget {
   }
 
   Future<Map<String, dynamic>?> _getUserByEmail(String email) async {
-    final response = await http.get(Uri.parse('${AppConfig.baseUrl}/api/users/by-email?email=$email'));
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+    const int maxRetries = 5;
+    const Duration delay = Duration(seconds: 2);
+
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        final response = await http.get(
+          Uri.parse('${AppConfig.baseUrl}/api/users/by-email?email=$email'),
+        );
+
+        if (response.statusCode == 200) {
+          return jsonDecode(response.body) as Map<String, dynamic>;
+        }
+
+        // Si es error 503 o similar, probablemente Neon está arrancando
+        if (response.statusCode == 503 || response.statusCode == 502) {
+          await Future.delayed(delay * (attempt + 1)); // backoff progresivo
+          continue;
+        }
+
+        // Otros errores no se reintentan
+        break;
+      } catch (e) {
+        await Future.delayed(delay * (attempt + 1));
+      }
     }
+
     return null;
   }
+
 }
 
 

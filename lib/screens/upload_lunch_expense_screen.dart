@@ -9,18 +9,6 @@ import 'package:http_parser/http_parser.dart';
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
 
-// ... imports sin cambios
-import 'dart:io';
-import 'dart:convert';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
-import 'package:cep_flutter_web/config/config.dart';
-import 'package:cep_flutter_web/widgets/standard_card.dart';
-
 class UploadLunchExpenseScreen extends StatefulWidget {
   final int userId;
   final int eventId;
@@ -45,7 +33,6 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
   File? _selectedImage;
   Uint8List? _webImageBytes;
   bool _isSubmitting = false;
-  bool _isShared = false;
   final baseUrl = AppConfig.baseUrl;
 
   Future<void> _pickImage(ImageSource source) async {
@@ -114,7 +101,7 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
       ..fields['concept'] = _conceptController.text
       ..fields['amount'] = _amountController.text
       ..fields['notes'] = _notesController.text
-      ..fields['is_shared'] = _isShared.toString();
+      ..fields['expense_type'] = 'Almuerzo';
 
     if (kIsWeb && _webImageBytes != null) {
       debugPrint("🖼️ Añadiendo imagen desde Web");
@@ -216,12 +203,6 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
                       decoration: const InputDecoration(labelText: 'Observaciones (opcional)'),
                       maxLines: 3,
                     ),
-                    CheckboxListTile(
-                      title: const Text("¿Gasto común?"),
-                      value: _isShared,
-                      onChanged: _isSubmitting ? null : (v) => setState(() => _isShared = v!),
-                      activeColor: mainColor,
-                    ),
                     TextButton.icon(
                       onPressed: _isSubmitting ? null : _showImageSourceSelector,
                       icon: Icon(Icons.attach_file, color: mainColor),
@@ -263,4 +244,3 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
     );
   }
 }
-

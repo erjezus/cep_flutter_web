@@ -15,11 +15,12 @@ class ExpenseListScreen extends StatefulWidget {
 }
 
 class _ExpenseListScreenState extends State<ExpenseListScreen> {
-  List commonExpenses = [];
-  List personalExpenses = [];
-  bool expandPersonal = false;
-  bool expandCommon = false;
+  Map<String, List> expensesByType = {};
+  Map<String, bool> expandedTypes = {};
   final baseUrl = AppConfig.baseUrl;
+
+  final List<String> fixedTypeOrder = ['Común', 'Comida', 'Bebida', 'A cuenta', 'Otro'];
+  bool onlyMine = false;
 
   @override
   void initState() {
@@ -29,28 +30,36 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
 
   void fetchExpenses() async {
     final res = await http.get(
-      Uri.parse('$baseUrl/api/expenses?user_id=${widget.userId}&event_id=${widget.eventId}'),
+      Uri.parse('$baseUrl/api/expenses?eventId=${widget.eventId}'),
     );
+
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
+      final filtered = onlyMine ? data.where((e) => e['user_id'] == widget.userId).toList() : data;
+
+      final Map<String, List> grouped = {};
+      for (var e in filtered) {
+        final type = e['expense_type'] ?? 'Otro';
+        if (!grouped.containsKey(type)) {
+          grouped[type] = [];
+        }
+        grouped[type]!.add(e);
+      }
+
       setState(() {
-        commonExpenses = data.where((e) => e['is_common'] == true).toList();
-        personalExpenses = data.where((e) => e['is_common'] != true).toList();
+        expensesByType = grouped;
+        expandedTypes = {for (var k in grouped.keys) k: false};
       });
     }
   }
 
-  Future<void> deleteExpense(int id, bool isCommon) async {
+  Future<void> deleteExpense(int id, String type) async {
     final response = await http.delete(
       Uri.parse('$baseUrl/api/expenses/$id'),
     );
     if (response.statusCode == 200) {
       setState(() {
-        if (isCommon) {
-          commonExpenses.removeWhere((e) => e['id'] == id);
-        } else {
-          personalExpenses.removeWhere((e) => e['id'] == id);
-        }
+        expensesByType[type]?.removeWhere((e) => e['id'] == id);
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -65,53 +74,99 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     final imagePath = e['image_path'];
     final hasImage = imagePath != null && imagePath.toString().isNotEmpty;
 
+    final concept = e['concept'] ?? '';
+    final amount = e['amount']?.toStringAsFixed(2) ?? '';
+    final user = e['user_name'] ?? '';
+    final notes = e['notes'] ?? '';
+    final date = (e['created_at'] ?? '').toString().split('T')[0];
+
     return StandardCard(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ListTile(
-            leading: Icon(Icons.receipt, color: mainColor),
-            title: Text(
-              e['concept'],
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("€${e['amount']}"),
-                if (e['notes'] != null && e['notes'].toString().isNotEmpty)
-                  Text(e['notes'], style: TextStyle(color: Colors.grey[700])),
-                Text(
-                  e['created_at'].toString().split('T')[0],
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+          Row(
+            children: [
+              const Icon(Icons.receipt_long_rounded, size: 28),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  concept,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
-              ],
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => deleteExpense(e['id'], e['is_common'] == true),
-            ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                onPressed: () => deleteExpense(e['id'], e['expense_type']),
+                tooltip: 'Eliminar gasto',
+              ),
+            ],
           ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.person, size: 16, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Text(user, style: const TextStyle(fontSize: 13)),
+              const Spacer(),
+              Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Text(date, style: const TextStyle(fontSize: 13)),
+              const Spacer(),
+              Icon(Icons.euro_symbol, size: 16, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Text("€$amount", style: const TextStyle(fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (notes.toString().isNotEmpty)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(top: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.note_alt, size: 18, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      notes,
+                      style: const TextStyle(fontSize: 14, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (hasImage)
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                icon: Icon(Icons.image, color: mainColor),
-                label: Text('Ver imagen', style: TextStyle(color: mainColor)),
-                onPressed: () {
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: ListTile(
+                leading: Icon(Icons.image, color: mainColor),
+                title: Text(
+                  'Ver imagen',
+                  style: TextStyle(color: mainColor, fontWeight: FontWeight.w500),
+                ),
+                onTap: () {
                   showDialog(
                     context: context,
                     builder: (_) => AlertDialog(
                       content: Image.network(
-                        imagePath, // usamos la URL completa tal cual viene
+                        imagePath,
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) =>
-                        const Text("No se pudo cargar la imagen"),
+                        errorBuilder: (_, __, ___) => const Text("No se pudo cargar la imagen"),
                       ),
                     ),
                   );
                 },
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               ),
             ),
         ],
@@ -119,7 +174,18 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     );
   }
 
-  Widget buildAccordion(String title, bool expanded, ValueChanged<bool> onToggle, List items, Color mainColor) {
+  Widget buildAccordion(
+      String title,
+      bool expanded,
+      ValueChanged<bool> onToggle,
+      List items,
+      Color mainColor,
+      ) {
+    final double total = items.fold<double>(
+      0.0,
+          (sum, item) => sum + (double.tryParse(item['amount'].toString()) ?? 0.0),
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: StandardCard(
@@ -128,8 +194,25 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
           onExpansionChanged: onToggle,
           tilePadding: const EdgeInsets.symmetric(horizontal: 12),
           childrenPadding: const EdgeInsets.only(bottom: 12),
-          title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: mainColor)),
-          children: items.map((e) => buildExpenseTile(e, mainColor)).toList(),
+          title: Text(
+            title,
+            style: TextStyle(fontWeight: FontWeight.bold, color: mainColor),
+          ),
+          children: [
+            ...items.map((e) => buildExpenseTile(e, mainColor)).toList(),
+            const Divider(),
+            ListTile(
+              title: const Text("Total"),
+              trailing: Text(
+                "€${total.toStringAsFixed(2)}",
+                style: TextStyle(
+                  color: mainColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -147,23 +230,44 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         elevation: 0,
         centerTitle: true,
       ),
-      body: personalExpenses.isEmpty && commonExpenses.isEmpty
-          ? const Center(child: Text("No hay gastos registrados"))
-          : ListView(
+      body: Column(
         children: [
-          buildAccordion(
-            "Gastos personales",
-            expandPersonal,
-                (value) => setState(() => expandPersonal = value),
-            personalExpenses,
-            mainColor,
+          SwitchListTile(
+            value: onlyMine,
+            onChanged: (value) {
+              setState(() {
+                onlyMine = value;
+              });
+              fetchExpenses();
+            },
+            title: const Text("Ver solo mis gastos"),
+            activeColor: mainColor,
           ),
-          buildAccordion(
-            "Gastos comunes",
-            expandCommon,
-                (value) => setState(() => expandCommon = value),
-            commonExpenses,
-            mainColor,
+          Expanded(
+            child: expensesByType.isEmpty
+                ? const Center(child: Text("No hay gastos registrados"))
+                : ListView(
+              children: [
+                for (var type in fixedTypeOrder)
+                  if (expensesByType.containsKey(type))
+                    buildAccordion(
+                      type,
+                      expandedTypes[type] ?? false,
+                          (value) => setState(() => expandedTypes[type] = value),
+                      expensesByType[type]!,
+                      mainColor,
+                    ),
+                for (var type in expensesByType.keys)
+                  if (!fixedTypeOrder.contains(type))
+                    buildAccordion(
+                      type,
+                      expandedTypes[type] ?? false,
+                          (value) => setState(() => expandedTypes[type] = value),
+                      expensesByType[type]!,
+                      mainColor,
+                    ),
+              ],
+            ),
           ),
         ],
       ),

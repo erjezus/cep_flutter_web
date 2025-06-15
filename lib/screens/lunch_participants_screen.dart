@@ -6,8 +6,9 @@ import 'package:cep_flutter_web/widgets/standard_card.dart';
 
 class LunchParticipantsScreen extends StatefulWidget {
   final int lunchId;
+  final int userId;
 
-  const LunchParticipantsScreen({required this.lunchId, super.key});
+  const LunchParticipantsScreen({required this.lunchId, required this.userId, super.key});
 
   @override
   State<LunchParticipantsScreen> createState() => _LunchParticipantsScreenState();
@@ -22,23 +23,59 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
   @override
   void initState() {
     super.initState();
-    fetchParticipants();
+    registerIfNeeded();
   }
 
-  Future<void> fetchParticipants() async {
+  Future<void> registerIfNeeded() async {
     setState(() => isLoading = true);
+    final userId = widget.userId;
+    final urlCheck = Uri.parse('$baseUrl/api/lunch_participants?lunch_id=${widget.lunchId}');
+    final resCheck = await http.get(urlCheck);
+
+    if (resCheck.statusCode == 200) {
+      final data = jsonDecode(resCheck.body);
+      final List safeData = data is List ? data : [];
+      final isAlreadyParticipant = safeData.any((p) => p['user_id'] == userId);
+
+      if (!isAlreadyParticipant || safeData.isEmpty) {
+        final urlPost = Uri.parse('$baseUrl/api/lunch_participants');
+        final resPost = await http.post(
+          urlPost,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'lunch_id': widget.lunchId, 'user_id': userId, 'num_people': 1}),
+        );
+
+        if (resPost.statusCode != 201 && resPost.statusCode != 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error al registrarte en el almuerzo')),
+          );
+        }
+      }
+
+      await fetchParticipants();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error al comprobar participantes')),
+      );
+      setState(() => isLoading = false);
+    }
+  }
+
+
+  Future<void> fetchParticipants() async {
     final url = Uri.parse('$baseUrl/api/lunch_participants?lunch_id=${widget.lunchId}');
     final res = await http.get(url);
     if (res.statusCode == 200) {
       setState(() {
         participants = jsonDecode(res.body);
+        isLoading = false;
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error al cargar participantes')),
       );
+      setState(() => isLoading = false);
     }
-    setState(() => isLoading = false);
   }
 
   Future<void> updateParticipant(int id, int numPeople) async {
@@ -59,7 +96,6 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -76,7 +112,7 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
           ? const Center(child: Text('No hay participantes'))
           : ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: participants.length + 1, // extra para el total
+        itemCount: participants.length + 1,
         itemBuilder: (context, index) {
           if (index == participants.length) {
             return StandardCard(

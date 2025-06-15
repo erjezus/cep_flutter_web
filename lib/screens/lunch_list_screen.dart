@@ -93,7 +93,7 @@ class _LunchListScreenState extends State<LunchListScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => LunchParticipantsScreen(lunchId: lunchId),
+        builder: (_) => LunchParticipantsScreen(lunchId: lunchId, userId: widget.userId),
       ),
     );
   }

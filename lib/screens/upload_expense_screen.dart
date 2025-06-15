@@ -4,17 +4,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart'; // <-- necesario para MediaType
-import 'package:cep_flutter_web/config/config.dart';
-import 'package:cep_flutter_web/widgets/standard_card.dart';
-
-// ... imports sin cambios
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'dart:typed_data';
-import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
@@ -41,8 +30,10 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
   File? _selectedImage;
   Uint8List? _webImageBytes;
   bool _isSubmitting = false;
-  bool _isShared = false;
   final baseUrl = AppConfig.baseUrl;
+
+  final List<String> _expenseTypes = ['Común', 'Comida', 'Bebida', 'A cuenta'];
+  String? _selectedExpenseType;
 
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
@@ -106,7 +97,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
       ..fields['concept'] = _conceptController.text
       ..fields['amount'] = _amountController.text
       ..fields['notes'] = _notesController.text
-      ..fields['is_shared'] = _isShared.toString();
+      ..fields['expense_type'] = _selectedExpenseType!;
 
     if (kIsWeb && _webImageBytes != null) {
       request.files.add(http.MultipartFile.fromBytes(
@@ -130,7 +121,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
       setState(() {
         _selectedImage = null;
         _webImageBytes = null;
-        _isShared = false;
+        _selectedExpenseType = null;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -185,16 +176,20 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
                       validator: (value) => value!.isEmpty ? 'Este campo es obligatorio' : null,
                     ),
                     const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(labelText: 'Tipo de gasto'),
+                      items: _expenseTypes
+                          .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                          .toList(),
+                      value: _selectedExpenseType,
+                      onChanged: _isSubmitting ? null : (value) => setState(() => _selectedExpenseType = value),
+                      validator: (value) => value == null ? 'Selecciona un tipo de gasto' : null,
+                    ),
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: _notesController,
                       decoration: const InputDecoration(labelText: 'Observaciones (opcional)'),
                       maxLines: 3,
-                    ),
-                    CheckboxListTile(
-                      title: const Text("¿Gasto común?"),
-                      value: _isShared,
-                      onChanged: _isSubmitting ? null : (v) => setState(() => _isShared = v!),
-                      activeColor: mainColor,
                     ),
                     TextButton.icon(
                       onPressed: _isSubmitting ? null : _showImageSourceSelector,
@@ -240,4 +235,3 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
     );
   }
 }
-
