@@ -113,7 +113,7 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
     try {
       final response = await http.delete(Uri.parse('$baseUrl/api/consumptions/$id'));
 
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         _showSuccess("Consumición eliminada");
         fetchConsumptions();
       } else {

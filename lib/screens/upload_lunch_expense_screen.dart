@@ -101,7 +101,7 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
       ..fields['user_id'] = widget.userId.toString()
       ..fields['event_id'] = widget.eventId.toString()
       ..fields['concept'] = _conceptController.text
-      ..fields['amount'] = _amountController.text
+      ..fields['amount'] = _amountController.text.replaceAll(',', '.')
       ..fields['notes'] = _notesController.text
       ..fields['expense_type'] = 'Almuerzo'
       ..fields['paid'] = _paid.toString();
