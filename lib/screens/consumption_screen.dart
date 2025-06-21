@@ -165,7 +165,8 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
           final productName = c['product_name']?.toString() ?? 'Producto';
           final consumedAtRaw = c['consumed_at'];
           final consumedAtFormatted = consumedAtRaw != null
-              ? DateFormat('HH:mm').format(DateTime.tryParse(consumedAtRaw) ?? DateTime(2000))
+              ? DateFormat('HH:mm').format(
+              (DateTime.tryParse(consumedAtRaw) ?? DateTime(2000)).add(const Duration(hours: 2)))
               : 'Hora desconocida';
 
           return ListTile(
