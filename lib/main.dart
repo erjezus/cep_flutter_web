@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+import 'dart:math';
 import 'dart:convert';
 import 'package:cep_flutter_web/screens/event_screen.dart';
 import 'package:cep_flutter_web/config/config.dart';
@@ -68,14 +69,27 @@ class MyApp extends StatelessWidget {
         future: _getUserByEmail(userEmail!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
+            final frasesCubatas = [
+              "Agitando el cubata... esto tarda menos que la cola del bar.",
+              "Preparando tu cubata virtual... con su hielo, su limón y su paciencia.",
+              "Cargando la app... y sirviendo cubatas como Dios manda.",
+              "Removiendo el cubata y conectando con la feria... un segundo.",
+              "Montando los cubatas... que esto no es agua con misterio.",
+              "Montando la caseta... que esto no se hace solo.",
+              "Cargando feria... ¡no te impacientes que ya suenan las sevillanas!",
+              "Reponiendo hielo y montando la barra... dame un segundo.",
+              "Preparando tu próxima ronda... 🥳🍻"
+            ];
+            final randomFrase = frasesCubatas[Random().nextInt(frasesCubatas.length)];
+
             return Scaffold(
               body: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
+                    const CircularProgressIndicator(),
                     const SizedBox(height: 16),
-                    Text("Cargando la app... y sirviendo cubatas como Dios manda"),
+                    Text(randomFrase, textAlign: TextAlign.center),
                   ],
                 ),
               ),
@@ -90,6 +104,7 @@ class MyApp extends StatelessWidget {
         },
       )
           : LoginScreen(),
+
     );
   }
 
