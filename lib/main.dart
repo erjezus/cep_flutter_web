@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:math';
+import 'dart:async';
 import 'dart:convert';
 import 'package:cep_flutter_web/screens/event_screen.dart';
 import 'package:cep_flutter_web/config/config.dart';
@@ -65,46 +66,16 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: isLoggedIn && userEmail != null
-          ? FutureBuilder<Map<String, dynamic>?>(
+          ? LoadingWithFrases(
         future: _getUserByEmail(userEmail!),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            final frasesCubatas = [
-              "Agitando el cubata... esto tarda menos que la cola del bar.",
-              "Preparando tu cubata virtual... con su hielo, su limón y su paciencia.",
-              "Cargando la app... y sirviendo cubatas como Dios manda.",
-              "Removiendo el cubata y conectando con la feria... un segundo.",
-              "Montando los cubatas... que esto no es agua con misterio.",
-              "Montando la caseta... que esto no se hace solo.",
-              "Cargando feria... ¡no te impacientes que ya suenan las sevillanas!",
-              "Reponiendo hielo y montando la barra... dame un segundo.",
-              "Preparando tu próxima ronda... 🥳🍻"
-            ];
-            final randomFrase = frasesCubatas[Random().nextInt(frasesCubatas.length)];
-
-            return Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 16),
-                    Text(randomFrase, textAlign: TextAlign.center),
-                  ],
-                ),
-              ),
-            );
-          }
-          final backendUser = snapshot.data;
-          if (backendUser != null) {
-            return EventScreen(userId: backendUser['id'], userName: backendUser['username']);
-          } else {
-            return LoginScreen();
-          }
-        },
+        onDone: (backendUser) => backendUser != null
+            ? EventScreen(
+          userId: backendUser['id'],
+          userName: backendUser['username'],
+        )
+            : LoginScreen(),
       )
           : LoginScreen(),
-
     );
   }
 
@@ -136,6 +107,95 @@ class MyApp extends StatelessWidget {
     return null;
   }
 }
+
+class LoadingWithFrases extends StatefulWidget {
+  final Future<Map<String, dynamic>?> future;
+  final Widget Function(Map<String, dynamic>?) onDone;
+
+  const LoadingWithFrases({super.key, required this.future, required this.onDone});
+
+  @override
+  State<LoadingWithFrases> createState() => _LoadingWithFrasesState();
+}
+
+class _LoadingWithFrasesState extends State<LoadingWithFrases> {
+  final frasesCubatas = [
+    "Agitando el cubata... esto tarda menos que la cola del bar.",
+    "Preparando tu cubata virtual... con su hielo, su limón y su paciencia.",
+    "Cargando la app... y sirviendo cubatas como Dios manda.",
+    "Removiendo el cubata y conectando con la feria... un segundo.",
+    "Montando los cubatas... que esto no es agua con misterio.",
+    "Montando la caseta... que esto no se hace solo.",
+    "Cargando feria... ¡no te impacientes que ya suenan las sevillanas!",
+    "Reponiendo hielo y montando la barra... dame un segundo.",
+    "Preparando tu próxima ronda... 🥳🍻"
+  ];
+
+  int _currentFraseIndex = 0;
+  Timer? _timer;
+  late Future<Map<String, dynamic>?> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.future;
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) {
+        setState(() {
+          _currentFraseIndex = Random().nextInt(frasesCubatas.length);
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>?> (
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 24),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 600),
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                    child: Text(
+                      frasesCubatas[_currentFraseIndex],
+                      key: ValueKey(_currentFraseIndex),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFB71C1C),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else {
+          return widget.onDone(snapshot.data);
+        }
+      },
+    );
+  }
+}
+
 
 class LoginScreen extends StatefulWidget {
   @override
