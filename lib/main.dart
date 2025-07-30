@@ -72,7 +72,7 @@ class MyApp extends StatelessWidget {
           }
           final backendUser = snapshot.data;
           if (backendUser != null) {
-            return EventScreen(userId: backendUser['id']);
+            return EventScreen(userId: backendUser['id'], userName: backendUser['username']);
           } else {
             return LoginScreen();
           }
@@ -230,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => EventScreen(userId: backendUser['id']),
+          builder: (_) => EventScreen(userId: backendUser['id'],userName: backendUser['username']),
         ),
       );
     }

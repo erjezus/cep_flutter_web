@@ -11,12 +11,14 @@ import 'package:cep_flutter_web/widgets/standard_section.dart';
 
 class EventMenuScreen extends StatefulWidget {
   final int userId;
+  final String userName;
   final int eventId;
   final String eventName;
 
   const EventMenuScreen({
     super.key,
     required this.userId,
+    required this.userName,
     required this.eventId,
     required this.eventName,
   });
@@ -80,6 +82,7 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                             MaterialPageRoute(
                               builder: (_) => ProductScreen(
                                 userId: widget.userId,
+                                userName: widget.userName,
                                 eventId: widget.eventId,
                               ),
                             ),
@@ -94,6 +97,7 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                             MaterialPageRoute(
                               builder: (_) => ConsumptionScreen(
                                 userId: widget.userId,
+                                userName: widget.userName,
                                 eventId: widget.eventId,
                               ),
                             ),
@@ -152,6 +156,7 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                     MaterialPageRoute(
                       builder: (_) => ProductScreen(
                         userId: widget.userId,
+                        userName: widget.userName,
                         eventId: widget.eventId,
                       ),
                     ),
@@ -167,6 +172,7 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                     MaterialPageRoute(
                       builder: (_) => ConsumptionScreen(
                         userId: widget.userId,
+                        userName: widget.userName,
                         eventId: widget.eventId,
                       ),
                     ),

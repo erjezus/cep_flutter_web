@@ -5,13 +5,19 @@ import 'package:intl/intl.dart';
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
 import 'package:cep_flutter_web/widgets/standard_section.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:flutter/services.dart';
 
 class ConsumptionScreen extends StatefulWidget {
   final int userId;
+  final String userName;
   final int eventId;
 
   const ConsumptionScreen({
     required this.userId,
+    required this.userName,
     required this.eventId,
     super.key,
   });
@@ -132,6 +138,140 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
     );
   }
 
+  // ... [imports y clase intactos hasta _generatePdf]
+
+  void _generatePdf(String userName) async {
+    final pdf = pw.Document();
+    final fontData = await rootBundle.load('assets/fonts/Roboto.ttf');
+    final ttf = pw.Font.ttf(fontData);
+    final logoBytes = await rootBundle.load('assets/logo.png');
+    final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        theme: pw.ThemeData.withFont(base: ttf),
+        header: (context) => pw.Container(
+          padding: const pw.EdgeInsets.only(bottom: 10),
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Image(logoImage, height: 40),
+              pw.Text(userName,
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
+        ),
+        build: (context) => [
+          pw.SizedBox(height: 12),
+          pw.Text("Resumen total", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 12),
+          pw.Table.fromTextArray(
+            headers: ['Producto', 'Cantidad', 'Unitario', 'Total'],
+            data: totalSummary.entries.map<List<String>>((e) {
+              final name = e.key.toString();
+              final quantity = e.value['quantity'].toString();
+              final unit = (e.value['unit_price'] as num).toStringAsFixed(2);
+              final total = (e.value['total'] as num).toStringAsFixed(2);
+              return [name, quantity, '€$unit', '€$total'];
+            }).toList(),
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            cellAlignment: pw.Alignment.centerLeft,
+          ),
+          pw.SizedBox(height: 12),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text(
+              "TOTAL GENERAL: €${grandTotal.toStringAsFixed(2)}",
+              style: pw.TextStyle(font: ttf, fontSize: 14, fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.SizedBox(height: 20),
+          pw.Text("Detalle por día",
+              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 16),
+
+          ...consumptionsByDay.map((day) {
+            final date = day['date'];
+            final formatted = DateFormat('dd-MM-yyyy').format(DateTime.parse(date));
+            final consumptions = day['consumptions'];
+
+            final rows = consumptions.map<List<String>>((c) {
+              final name = c['product_name']?.toString() ?? 'Producto';
+              final qty = c['quantity'].toString();
+              final time = c['consumed_at'] != null
+                  ? DateFormat('HH:mm').format(DateTime.parse(c['consumed_at']).add(const Duration(hours: 2)))
+                  : 'Hora desconocida';
+              final price = (c['total_price'] as num?)?.toStringAsFixed(2) ?? '0.00';
+              return [name, qty, time, '€$price'];
+            }).toList();
+
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(formatted, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 8),
+                pw.Table.fromTextArray(
+                  headers: ['Producto', 'Cantidad', 'Hora', 'Total'],
+                  data: rows,
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  cellAlignment: pw.Alignment.centerLeft,
+                ),
+                pw.SizedBox(height: 12),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    final Color mainColor = const Color(0xFFD32F2F);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Mis consumiciones", style: TextStyle(color: Colors.white)),
+        backgroundColor: mainColor,
+        elevation: 0,
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download, color: Colors.white),
+            tooltip: "Descargar PDF",
+            onPressed: () => _generatePdf(this.widget.userName),
+          )
+        ],
+      ),
+      body: SafeArea(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : consumptionsByDay.isEmpty
+            ? const Center(child: Text("No hay consumiciones registradas"))
+            : ListView(
+          children: [
+            ...consumptionsByDay.map((dayData) {
+              final rawDate = dayData['date'];
+              final formattedDate =
+              DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate));
+              final List consumptions = dayData['consumptions'];
+              final isExpanded = expandedDates.contains(rawDate);
+              return buildAccordion(
+                  formattedDate, rawDate, consumptions, isExpanded, mainColor);
+            }).toList(),
+            const SizedBox(height: 12),
+            buildSummary(mainColor),
+          ],
+        ),
+      ),
+    );
+  }
+
   IconData getIconForProduct(String name) {
     final lower = name.toLowerCase();
     if (lower.contains("cerveza") || lower.contains("botell")) return Icons.local_drink;
@@ -139,7 +279,8 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
     return Icons.fastfood;
   }
 
-  Widget buildAccordion(String title, String dateKey, List items, bool isExpanded, Color mainColor) {
+  Widget buildAccordion(
+      String title, String dateKey, List items, bool isExpanded, Color mainColor) {
     double dayTotal = 0.0;
     for (var c in items) {
       dayTotal += c['total_price'] ?? 0.0;
@@ -166,7 +307,8 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
           final consumedAtRaw = c['consumed_at'];
           final consumedAtFormatted = consumedAtRaw != null
               ? DateFormat('HH:mm').format(
-              (DateTime.tryParse(consumedAtRaw) ?? DateTime(2000)).add(const Duration(hours: 2)))
+              (DateTime.tryParse(consumedAtRaw) ?? DateTime(2000))
+                  .add(const Duration(hours: 2)))
               : 'Hora desconocida';
 
           return ListTile(
@@ -186,11 +328,13 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
             ),
           );
         }).toList()
-          ..insert(0, Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            child: Text("Total: €${dayTotal.toStringAsFixed(2)}",
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-          )),
+          ..insert(
+              0,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: Text("Total: €${dayTotal.toStringAsFixed(2)}",
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+              )),
       ),
     );
   }
@@ -202,15 +346,16 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.all(12.0),
-            child: Text("Resumen total",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            child:
+            Text("Resumen total", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ),
           ...totalSummary.entries.map((entry) {
             final name = entry.key;
             final details = entry.value;
             return ListTile(
               title: Text(name),
-              subtitle: Text("Cantidad: ${details['quantity']} • Unitario: €${details['unit_price']}"),
+              subtitle:
+              Text("Cantidad: ${details['quantity']} • Unitario: €${details['unit_price']}"),
               trailing: Text("€${details['total'].toStringAsFixed(2)}"),
             );
           }).toList(),
@@ -226,41 +371,6 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
             ),
           )
         ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final Color mainColor = const Color(0xFFD32F2F);
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text("Mis consumiciones", style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : consumptionsByDay.isEmpty
-            ? const Center(child: Text("No hay consumiciones registradas"))
-            : ListView(
-          children: [
-            ...consumptionsByDay.map((dayData) {
-              final rawDate = dayData['date'];
-              final formattedDate =
-              DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate));
-              final List consumptions = dayData['consumptions'];
-              final isExpanded = expandedDates.contains(rawDate);
-              return buildAccordion(formattedDate, rawDate, consumptions, isExpanded, mainColor);
-            }).toList(),
-            const SizedBox(height: 12),
-            buildSummary(mainColor),
-          ],
-        ),
       ),
     );
   }

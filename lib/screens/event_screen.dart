@@ -7,8 +7,9 @@ import 'package:cep_flutter_web/widgets/standard_card.dart';
 
 class EventScreen extends StatefulWidget {
   final int userId;
+  final String userName;
 
-  EventScreen({required this.userId});
+  EventScreen({required this.userId,required this.userName});
 
   @override
   State<EventScreen> createState() => _EventScreenState();
@@ -73,6 +74,7 @@ class _EventScreenState extends State<EventScreen> {
                     MaterialPageRoute(
                       builder: (_) => EventMenuScreen(
                         userId: widget.userId,
+                        userName: widget.userName,
                         eventId: event['id'],
                         eventName: event['name'],
                       ),

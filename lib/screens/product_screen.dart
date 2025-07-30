@@ -8,9 +8,10 @@ import 'package:cep_flutter_web/screens/consumption_screen.dart';
 
 class ProductScreen extends StatefulWidget {
   final int userId;
+  final String userName;
   final int eventId;
 
-  const ProductScreen({required this.userId, required this.eventId, super.key});
+  const ProductScreen({required this.userId,required this.userName, required this.eventId, super.key});
 
   @override
   State<ProductScreen> createState() => _ProductScreenState();
@@ -245,6 +246,7 @@ class _ProductScreenState extends State<ProductScreen> {
               MaterialPageRoute(
                 builder: (_) => ConsumptionScreen(
                   userId: widget.userId,
+                  userName: widget.userName,
                   eventId: widget.eventId,
                 ),
               ),
