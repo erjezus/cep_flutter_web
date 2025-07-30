@@ -68,7 +68,18 @@ class MyApp extends StatelessWidget {
         future: _getUserByEmail(userEmail!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Scaffold(body: Center(child: CircularProgressIndicator()));
+            return Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text("Cargando la app... y sirviendo cubatas como Dios manda"),
+                  ],
+                ),
+              ),
+            );
           }
           final backendUser = snapshot.data;
           if (backendUser != null) {
@@ -96,13 +107,11 @@ class MyApp extends StatelessWidget {
           return jsonDecode(response.body) as Map<String, dynamic>;
         }
 
-        // Si es error 503 o similar, probablemente Neon está arrancando
         if (response.statusCode == 503 || response.statusCode == 502) {
-          await Future.delayed(delay * (attempt + 1)); // backoff progresivo
+          await Future.delayed(delay * (attempt + 1));
           continue;
         }
 
-        // Otros errores no se reintentan
         break;
       } catch (e) {
         await Future.delayed(delay * (attempt + 1));
@@ -111,9 +120,7 @@ class MyApp extends StatelessWidget {
 
     return null;
   }
-
 }
-
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -128,9 +135,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   bool isLogin = true;
+  final bool showGoogleButton = false;
 
   Future<void> _signInWithGoogle() async {
     try {
+
+      await FirebaseAuth.instance.setPersistence(Persistence.LOCAL); // <- mantiene la sesión activa incluso tras cerrar navegador
+
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
       final GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
 
@@ -230,7 +241,10 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => EventScreen(userId: backendUser['id'],userName: backendUser['username']),
+          builder: (_) => EventScreen(
+            userId: backendUser['id'],
+            userName: backendUser['username'],
+          ),
         ),
       );
     }
@@ -308,18 +322,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"),
                   ),
                   const Divider(height: 32),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.login),
-                    label: const Text("Continuar con Google"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Color(0xFFB71C1C),
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  if (showGoogleButton)
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.login),
+                      label: const Text("Continuar con Google"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Color(0xFFB71C1C),
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      ),
+                      onPressed: _signInWithGoogle,
                     ),
-                    onPressed: _signInWithGoogle,
-                  ),
                 ],
               ),
             ),
