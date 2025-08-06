@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -141,92 +142,108 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
   // ... [imports y clase intactos hasta _generatePdf]
 
   void _generatePdf(String userName) async {
-    final pdf = pw.Document();
-    final fontData = await rootBundle.load('assets/fonts/Roboto.ttf');
-    final ttf = pw.Font.ttf(fontData);
-    final logoBytes = await rootBundle.load('assets/logo.png');
-    final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
+    try {
+      final pdf = pw.Document();
+      final fontData = await rootBundle.load('assets/fonts/Roboto.ttf');
+      final ttf = pw.Font.ttf(fontData);
+      final logoBytes = await rootBundle.load('assets/logo.png');
+      final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        theme: pw.ThemeData.withFont(base: ttf),
-        header: (context) => pw.Container(
-          padding: const pw.EdgeInsets.only(bottom: 10),
-          child: pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Image(logoImage, height: 40),
-              pw.Text(userName,
-                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-            ],
-          ),
-        ),
-        build: (context) => [
-          pw.SizedBox(height: 12),
-          pw.Text("Resumen total", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 12),
-          pw.Table.fromTextArray(
-            headers: ['Producto', 'Cantidad', 'Unitario', 'Total'],
-            data: totalSummary.entries.map<List<String>>((e) {
-              final name = e.key.toString();
-              final quantity = e.value['quantity'].toString();
-              final unit = (e.value['unit_price'] as num).toStringAsFixed(2);
-              final total = (e.value['total'] as num).toStringAsFixed(2);
-              return [name, quantity, '€$unit', '€$total'];
-            }).toList(),
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            cellAlignment: pw.Alignment.centerLeft,
-          ),
-          pw.SizedBox(height: 12),
-          pw.Align(
-            alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              "TOTAL GENERAL: €${grandTotal.toStringAsFixed(2)}",
-              style: pw.TextStyle(font: ttf, fontSize: 14, fontWeight: pw.FontWeight.bold),
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          theme: pw.ThemeData.withFont(base: ttf),
+          header: (context) => pw.Container(
+            padding: const pw.EdgeInsets.only(bottom: 10),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Image(logoImage, height: 40),
+                pw.Text(userName,
+                    style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              ],
             ),
           ),
-          pw.SizedBox(height: 20),
-          pw.Text("Detalle por día",
-              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 16),
+          build: (context) => [
+            pw.SizedBox(height: 12),
+            pw.Text("Resumen total", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 12),
+            pw.Table.fromTextArray(
+              headers: ['Producto', 'Cantidad', 'Unitario', 'Total'],
+              data: totalSummary.entries.map<List<String>>((e) {
+                final name = e.key.toString();
+                final quantity = e.value['quantity'].toString();
+                final unit = (e.value['unit_price'] as num).toStringAsFixed(2);
+                final total = (e.value['total'] as num).toStringAsFixed(2);
+                return [name, quantity, '€$unit', '€$total'];
+              }).toList(),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              cellAlignment: pw.Alignment.centerLeft,
+            ),
+            pw.SizedBox(height: 12),
+            pw.Align(
+              alignment: pw.Alignment.centerRight,
+              child: pw.Text(
+                "TOTAL GENERAL: €${grandTotal.toStringAsFixed(2)}",
+                style: pw.TextStyle(font: ttf, fontSize: 14, fontWeight: pw.FontWeight.bold),
+              ),
+            ),
+            pw.SizedBox(height: 20),
+            pw.Text("Detalle por día",
+                style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 16),
+            ...consumptionsByDay.map((day) {
+              final date = day['date'];
+              final formatted = DateFormat('dd-MM-yyyy').format(DateTime.parse(date));
+              final consumptions = day['consumptions'];
 
-          ...consumptionsByDay.map((day) {
-            final date = day['date'];
-            final formatted = DateFormat('dd-MM-yyyy').format(DateTime.parse(date));
-            final consumptions = day['consumptions'];
+              final rows = consumptions.map<List<String>>((c) {
+                final name = c['product_name']?.toString() ?? 'Producto';
+                final qty = c['quantity'].toString();
+                final time = c['consumed_at'] != null
+                    ? DateFormat('HH:mm').format(DateTime.parse(c['consumed_at']).add(const Duration(hours: 2)))
+                    : 'Hora desconocida';
+                final price = (c['total_price'] as num?)?.toStringAsFixed(2) ?? '0.00';
+                return [name, qty, time, '€$price'];
+              }).toList();
 
-            final rows = consumptions.map<List<String>>((c) {
-              final name = c['product_name']?.toString() ?? 'Producto';
-              final qty = c['quantity'].toString();
-              final time = c['consumed_at'] != null
-                  ? DateFormat('HH:mm').format(DateTime.parse(c['consumed_at']).add(const Duration(hours: 2)))
-                  : 'Hora desconocida';
-              final price = (c['total_price'] as num?)?.toStringAsFixed(2) ?? '0.00';
-              return [name, qty, time, '€$price'];
-            }).toList();
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(formatted, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 8),
+                  pw.Table.fromTextArray(
+                    headers: ['Producto', 'Cantidad', 'Hora', 'Total'],
+                    data: rows,
+                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    cellAlignment: pw.Alignment.centerLeft,
+                  ),
+                  pw.SizedBox(height: 12),
+                ],
+              );
+            }),
+          ],
+        ),
+      );
 
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(formatted, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 8),
-                pw.Table.fromTextArray(
-                  headers: ['Producto', 'Cantidad', 'Hora', 'Total'],
-                  data: rows,
-                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                  cellAlignment: pw.Alignment.centerLeft,
-                ),
-                pw.SizedBox(height: 12),
-              ],
-            );
-          }),
-        ],
-      ),
-    );
+      final pdfBytes = await pdf.save();
 
-    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+      final isMobile = !kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS);
+
+      if (isMobile) {
+        // Descargar localmente en el móvil
+
+      } else {
+        // Mostrar diálogo de impresión/descarga (web)
+        await Printing.layoutPdf(onLayout: (format) async => pdfBytes);
+      }
+    } catch (e) {
+      _showError("Error generando PDF: $e");
+    }
   }
+
 
 
   @override
