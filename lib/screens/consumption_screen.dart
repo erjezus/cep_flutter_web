@@ -228,17 +228,8 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
 
       final pdfBytes = await pdf.save();
 
-      final isMobile = !kIsWeb &&
-          (defaultTargetPlatform == TargetPlatform.android ||
-              defaultTargetPlatform == TargetPlatform.iOS);
+      await Printing.layoutPdf(onLayout: (format) async => pdfBytes);
 
-      if (isMobile) {
-        // Descargar localmente en el móvil
-
-      } else {
-        // Mostrar diálogo de impresión/descarga (web)
-        await Printing.layoutPdf(onLayout: (format) async => pdfBytes);
-      }
     } catch (e) {
       _showError("Error generando PDF: $e");
     }
