@@ -139,7 +139,7 @@ class _LoadingWithFrasesState extends State<LoadingWithFrases> {
   void initState() {
     super.initState();
     _future = widget.future;
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (mounted) {
         setState(() {
           _currentFraseIndex = Random().nextInt(frasesCubatas.length);

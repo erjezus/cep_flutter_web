@@ -42,8 +42,8 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
     setState(() => isLoading = true);
 
     try {
-      final foodRes = await http.get(Uri.parse('$baseUrl/api/consumptions/total/event?userId=${widget.userId}&eventId=${widget.eventId}&type=food'));
-      final drinkRes = await http.get(Uri.parse('$baseUrl/api/consumptions/total/event?userId=${widget.userId}&eventId=${widget.eventId}&type=drink'));
+      final foodRes = await http.get(Uri.parse('$baseUrl/api/consumptions/total/event?userId=${widget.userId}&eventId=${widget.eventId}&type=Comida'));
+      final drinkRes = await http.get(Uri.parse('$baseUrl/api/consumptions/total/event?userId=${widget.userId}&eventId=${widget.eventId}&type=Bebida'));
       final globalDrinkRes = await http.get(Uri.parse('$baseUrl/api/summary/drink?eventId=${widget.eventId}'));
       final globalFoodRes = await http.get(Uri.parse('$baseUrl/api/summary/food?eventId=${widget.eventId}'));
       final commonExpensesRes = await http.get(Uri.parse('$baseUrl/api/summary/common?eventId=${widget.eventId}'));
@@ -106,31 +106,50 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
     }
   }
 
-  Widget buildRow(String label, String value, {bool highlight = false, IconData? icon, Color? overrideColor}) {
+  Widget buildRow(String label, String value, {
+    bool highlight = false,
+    IconData? icon,
+    Color? overrideColor,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              if (icon != null) Icon(icon, size: 18),
-              if (icon != null) const SizedBox(width: 6),
-              Text(label, style: const TextStyle(fontSize: 16)),
-            ],
+          Expanded(
+            child: Row(
+              children: [
+                if (icon != null) Icon(icon, size: 18),
+                if (icon != null) const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
+                  ),
+                ),
+              ],
+            ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: highlight ? 18 : 16,
-              color: overrideColor ?? (highlight ? Colors.red[700] : Colors.black),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: highlight ? 18 : 16,
+                color: overrideColor ?? (highlight ? Colors.red[700] : Colors.black),
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
       ),
     );
   }
+
 
   Widget buildSection(String title, List<Widget> content) {
     return Card(
@@ -152,6 +171,9 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
+
+    final Color mainColor = const Color(0xFFD32F2F);
+
     final total = totalFood + totalDrink;
     final diferenciaBebida = globalDrinkSpent - globalDrinkConsumed;
     final diferenciaComida = globalFoodSpent - globalFoodConsumed;
@@ -162,8 +184,8 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Resumen de gastos'),
-        backgroundColor: const Color(0xFFD32F2F),
+        title: const Text('Resumen de gastos', style: TextStyle(color: Colors.white)),
+        backgroundColor: mainColor,
         centerTitle: true,
       ),
       body: isLoading
@@ -178,21 +200,33 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
               buildRow("Bebida", "€${totalDrink.toStringAsFixed(2)}", icon: Icons.local_drink),
               buildRow("Total consumido", "€${total.toStringAsFixed(2)}", highlight: true, icon: Icons.calculate),
             ]),
-            buildSection("Coste por almuerzo", lunchCosts.map((lunch) {
+            buildSection("Coste por almuerzo", (lunchCosts.isEmpty
+                ? [
+              {
+                'description': 'Almuerzo',
+                'total_amount': 0.0,
+                'total_people': 0,
+                'user_people': 0,
+                'cost_per_plate': 0.0,
+                'user_cost': 0.0,
+              }
+            ]
+                : lunchCosts).map((lunch) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(lunch['description'] ?? 'Almuerzo', style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   buildRow("Importe total", "€${(lunch['total_amount'] ?? 0).toStringAsFixed(2)}"),
-                  buildRow("Personas", "${lunch['total_people']}"),
-                  buildRow("Comensales del usuario", "${lunch['user_people']}"),
+                  buildRow("Personas", "${lunch['total_people'] ?? 0}"),
+                  buildRow("Comensales del usuario", "${lunch['user_people'] ?? 0}"),
                   buildRow("Coste por plato", "€${(lunch['cost_per_plate'] ?? 0).toStringAsFixed(2)}"),
                   buildRow("Coste usuario", "€${(lunch['user_cost'] ?? 0).toStringAsFixed(2)}", highlight: true),
                   const Divider(),
                 ],
               );
             }).toList()),
+
             buildSection("Resumen general bebida", [
               buildRow("Total comprado", "€${globalDrinkSpent.toStringAsFixed(2)}", icon: Icons.shopping_cart),
               buildRow("Total consumido", "€${globalDrinkConsumed.toStringAsFixed(2)}", icon: Icons.local_bar),
