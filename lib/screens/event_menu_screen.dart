@@ -6,6 +6,7 @@ import 'package:cep_flutter_web/screens/expense_list_screen.dart';
 import 'package:cep_flutter_web/screens/common_summary_screen.dart';
 import 'package:cep_flutter_web/screens/lunch_list_screen.dart';
 import 'package:cep_flutter_web/screens/create_lunch_screen.dart';
+import 'package:cep_flutter_web/screens/all_users_summary_screen.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
 import 'package:cep_flutter_web/widgets/standard_section.dart';
 
@@ -128,6 +129,17 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                                 eventId: widget.eventId,
                                 userId: widget.userId,
                               ),
+                            ),
+                          ),
+                        ),
+                        _buildQuickAccess(
+                          icon: Icons.people_alt,
+                          label: "Resumen\nusuarios",
+                          color: Colors.indigo,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AllUsersSummaryScreen(eventId: widget.eventId),
                             ),
                           ),
                         ),
@@ -254,21 +266,33 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                   ),
                 ),
                 _buildMenuItem(
-                  title: "Resumen total",
-                  subtitle: "Ver gastos totales",
-                  icon: Icons.group,
-                  color: accentColor,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CommonSummaryScreen(
-                        userId: widget.userId,
-                        eventId: widget.eventId,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                   title: "Resumen total",
+                   subtitle: "Ver gastos totales",
+                   icon: Icons.group,
+                   color: accentColor,
+                   onTap: () => Navigator.push(
+                     context,
+                     MaterialPageRoute(
+                       builder: (_) => CommonSummaryScreen(
+                         userId: widget.userId,
+                         eventId: widget.eventId,
+                       ),
+                     ),
+                   ),
+                 ),
+                 _buildMenuItem(
+                   title: "Resumen por usuario",
+                   subtitle: "Balance de todos los participantes",
+                   icon: Icons.people_alt,
+                   color: Colors.indigo,
+                   onTap: () => Navigator.push(
+                     context,
+                     MaterialPageRoute(
+                       builder: (_) => AllUsersSummaryScreen(eventId: widget.eventId),
+                     ),
+                   ),
+                 ),
+               ],
             ),
           ],
         ),

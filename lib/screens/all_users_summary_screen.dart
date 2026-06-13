@@ -1,0 +1,601 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/widgets/standard_card.dart';
+
+class AllUsersSummaryScreen extends StatefulWidget {
+  final int eventId;
+
+  const AllUsersSummaryScreen({required this.eventId, super.key});
+
+  @override
+  State<AllUsersSummaryScreen> createState() => _AllUsersSummaryScreenState();
+}
+
+class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
+  List<dynamic> usersData = [];
+  bool isLoading = false;
+  final baseUrl = AppConfig.baseUrl;
+  final Color mainColor = const Color(0xFFD32F2F);
+
+  @override
+  void initState() {
+    super.initState();
+    fetchAllUsers();
+  }
+
+  Future<void> fetchAllUsers() async {
+    setState(() => isLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/summary/all-users?eventId=${widget.eventId}'),
+      );
+      if (response.statusCode == 200) {
+        setState(() {
+          usersData = jsonDecode(utf8.decode(response.bodyBytes));
+        });
+      } else {
+        _showError('Error al cargar el resumen');
+      }
+    } catch (_) {
+      _showError('Error de red al cargar el resumen');
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.grey[800]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Resumen general', style: TextStyle(color: Colors.white)),
+        backgroundColor: mainColor,
+        elevation: 0,
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            tooltip: 'Actualizar',
+            onPressed: fetchAllUsers,
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : usersData.isEmpty
+                ? const Center(child: Text('No hay datos disponibles'))
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    itemCount: usersData.length,
+                    itemBuilder: (context, index) =>
+                        _UserCard(user: usersData[index], mainColor: mainColor),
+                  ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Card expandible por usuario
+// ---------------------------------------------------------------------------
+class _UserCard extends StatefulWidget {
+  final Map<String, dynamic> user;
+  final Color mainColor;
+
+  const _UserCard({required this.user, required this.mainColor});
+
+  @override
+  State<_UserCard> createState() => _UserCardState();
+}
+
+class _UserCardState extends State<_UserCard> {
+  bool _expanded = false;
+
+  Future<void> _generatePdf(Map<String, dynamic> u) async {
+    final pdf = pw.Document();
+    final fontData = await rootBundle.load('assets/fonts/Roboto.ttf');
+    final ttf = pw.Font.ttf(fontData);
+    final logoBytes = await rootBundle.load('assets/logo.png');
+    final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
+
+    final username = u['username'] ?? 'Usuario';
+    final balance = (u['balance'] ?? 0.0).toDouble();
+    final haAportado = (u['ha_aportado'] ?? 0.0).toDouble();
+    final debe = (u['debe'] ?? 0.0).toDouble();
+    final totalConsumption = (u['total_consumption'] ?? 0.0).toDouble();
+    final totalLunch = (u['total_lunch_cost'] ?? 0.0).toDouble();
+    final totalPaidByType = (u['total_paid_by_type'] ?? 0.0).toDouble();
+    final commonShare = (u['common_share'] ?? 0.0).toDouble();
+
+    final consumptions = (u['consumptions'] as List? ?? []);
+    final paidExpenses = (u['paid_expenses_by_type'] as List? ?? []);
+    final lunchCosts = (u['lunch_costs'] as List? ?? [])
+        .where((l) => (l['user_cost'] ?? 0.0) > 0)
+        .toList();
+    final commonExpenses = (u['common_expenses_detail'] as List? ?? []);
+
+    final balanceStr = balance >= 0
+        ? 'Le deben: €${balance.toStringAsFixed(2)}'
+        : 'Debe: €${balance.abs().toStringAsFixed(2)}';
+
+    pw.Widget _pdfSection(String title, List<pw.Widget> rows) {
+      return pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(height: 10),
+          pw.Text(title,
+              style: pw.TextStyle(font: ttf, fontSize: 13, fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.grey800)),
+          pw.Divider(thickness: 0.5),
+          ...rows,
+        ],
+      );
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        theme: pw.ThemeData.withFont(base: ttf),
+        header: (_) => pw.Container(
+          padding: const pw.EdgeInsets.only(bottom: 8),
+          decoration: const pw.BoxDecoration(
+              border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Image(logoImage, height: 36),
+              pw.Text(username,
+                  style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
+        ),
+        build: (_) => [
+          pw.SizedBox(height: 12),
+          // Balance destacado
+          pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              color: balance >= 0 ? PdfColors.green50 : PdfColors.red50,
+              borderRadius: pw.BorderRadius.circular(8),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Ha aportado: €${haAportado.toStringAsFixed(2)}',
+                    style: pw.TextStyle(font: ttf, fontSize: 12)),
+                pw.Text('Debe: €${debe.toStringAsFixed(2)}',
+                    style: pw.TextStyle(font: ttf, fontSize: 12)),
+                pw.Text(balanceStr,
+                    style: pw.TextStyle(
+                        font: ttf,
+                        fontSize: 13,
+                        fontWeight: pw.FontWeight.bold,
+                        color: balance >= 0 ? PdfColors.green700 : PdfColors.red700)),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          // Totales
+          pw.Table.fromTextArray(
+            headers: ['Consumo', 'Almuerzos', 'Gastos pagados', 'Parte común'],
+            data: [
+              [
+                '€${totalConsumption.toStringAsFixed(2)}',
+                '€${totalLunch.toStringAsFixed(2)}',
+                '€${totalPaidByType.toStringAsFixed(2)}',
+                '€${commonShare.toStringAsFixed(2)}',
+              ]
+            ],
+            headerStyle: pw.TextStyle(font: ttf, fontWeight: pw.FontWeight.bold, fontSize: 10),
+            cellStyle: pw.TextStyle(font: ttf, fontSize: 11),
+            cellAlignment: pw.Alignment.center,
+          ),
+
+          // Consumiciones
+          if (consumptions.isNotEmpty)
+            _pdfSection('Consumiciones', [
+              pw.Table.fromTextArray(
+                headers: ['Producto', 'Tipología', 'Cantidad', 'Total'],
+                data: consumptions.map<List<String>>((c) => [
+                  c['product_name'] ?? '',
+                  c['typology'] ?? '',
+                  '${c['total_qty']}',
+                  '€${(c['total_price'] ?? 0.0).toStringAsFixed(2)}',
+                ]).toList(),
+                headerStyle: pw.TextStyle(font: ttf, fontWeight: pw.FontWeight.bold, fontSize: 10),
+                cellStyle: pw.TextStyle(font: ttf, fontSize: 10),
+                cellAlignment: pw.Alignment.center,
+              ),
+            ]),
+
+          // Gastos pagados
+          if (paidExpenses.isNotEmpty)
+            _pdfSection('Gastos pagados', [
+              pw.Table.fromTextArray(
+                headers: ['Tipo', 'Total'],
+                data: paidExpenses.map<List<String>>((e) => [
+                  e['expense_type'] ?? '',
+                  '€${(e['total_amount'] ?? 0.0).toStringAsFixed(2)}',
+                ]).toList(),
+                headerStyle: pw.TextStyle(font: ttf, fontWeight: pw.FontWeight.bold, fontSize: 10),
+                cellStyle: pw.TextStyle(font: ttf, fontSize: 10),
+                cellAlignment: pw.Alignment.center,
+              ),
+            ]),
+
+          // Almuerzos
+          if (lunchCosts.isNotEmpty)
+            _pdfSection('Almuerzos', [
+              pw.Table.fromTextArray(
+                headers: ['Descripción', 'Personas', '€/plato', 'Tu parte'],
+                data: lunchCosts.map<List<String>>((l) => [
+                  l['description'] ?? '',
+                  '${l['user_people']}',
+                  '€${(l['cost_per_plate'] ?? 0.0).toStringAsFixed(2)}',
+                  '€${(l['user_cost'] ?? 0.0).toStringAsFixed(2)}',
+                ]).toList(),
+                headerStyle: pw.TextStyle(font: ttf, fontWeight: pw.FontWeight.bold, fontSize: 10),
+                cellStyle: pw.TextStyle(font: ttf, fontSize: 10),
+                cellAlignment: pw.Alignment.center,
+              ),
+            ]),
+
+          // Gastos comunes
+          if (commonExpenses.isNotEmpty)
+            _pdfSection('Gastos comunes', [
+              pw.Table.fromTextArray(
+                headers: ['Concepto', 'Total', 'Tu parte'],
+                data: commonExpenses.map<List<String>>((e) => [
+                  e['concept'] ?? '',
+                  '€${(e['amount'] ?? 0.0).toStringAsFixed(2)}',
+                  '€${(e['user_share'] ?? 0.0).toStringAsFixed(2)}',
+                ]).toList(),
+                headerStyle: pw.TextStyle(font: ttf, fontWeight: pw.FontWeight.bold, fontSize: 10),
+                cellStyle: pw.TextStyle(font: ttf, fontSize: 10),
+                cellAlignment: pw.Alignment.center,
+              ),
+            ]),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (_) async => pdf.save());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final u = widget.user;
+    final color = widget.mainColor;
+    final balance = (u['balance'] ?? 0.0).toDouble();
+    final debe = (u['debe'] ?? 0.0).toDouble();
+    final haAportado = (u['ha_aportado'] ?? 0.0).toDouble();
+    final balanceColor = balance >= 0 ? Colors.green[700]! : Colors.red[700]!;
+    final balanceLabel = balance >= 0
+        ? '✅ Le deben €${balance.toStringAsFixed(2)}'
+        : '❌ Debe €${balance.abs().toStringAsFixed(2)}';
+
+    return Card(
+      color: Colors.white,
+      elevation: 6,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: _expanded,
+          onExpansionChanged: (v) => setState(() => _expanded = v),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: CircleAvatar(
+            backgroundColor: color.withOpacity(0.12),
+            child: Text(
+              (u['username'] as String? ?? '?')[0].toUpperCase(),
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
+          ),
+          title: Text(
+            u['username'] ?? 'Usuario',
+            style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 16),
+          ),
+          subtitle: Text(
+            balanceLabel,
+            style: TextStyle(color: balanceColor, fontWeight: FontWeight.w600),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf),
+                tooltip: 'Descargar PDF',
+                color: color,
+                onPressed: () => _generatePdf(u),
+              ),
+              // flecha por defecto del ExpansionTile
+              const Icon(Icons.expand_more),
+            ],
+          ),
+          children: [
+            _SummaryTotalsRow(user: u, mainColor: color),
+            const Divider(),
+            _BalanceDetailRow(haAportado: haAportado, debe: debe, balance: balance),
+            const Divider(),
+            _ConsumptionsSection(consumptions: u['consumptions'] ?? [], mainColor: color),
+            const SizedBox(height: 6),
+            _ExpensesSection(expenses: u['paid_expenses_by_type'] ?? [], mainColor: color),
+            const SizedBox(height: 6),
+            _LunchSection(lunchCosts: u['lunch_costs'] ?? [], mainColor: color),
+            const SizedBox(height: 6),
+            _CommonExpensesSection(
+              items: u['common_expenses_detail'] ?? [],
+              commonShare: (u['common_share'] ?? 0.0).toDouble(),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fila resumen de totales del usuario
+// ---------------------------------------------------------------------------
+class _SummaryTotalsRow extends StatelessWidget {
+  final Map<String, dynamic> user;
+  final Color mainColor;
+
+  const _SummaryTotalsRow({required this.user, required this.mainColor});
+
+  Widget _tile(String label, String value, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(value,
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
+          const SizedBox(height: 2),
+          Text(label,
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
+              textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          _tile('Consumo', '€${(user['total_consumption'] ?? 0.0).toStringAsFixed(2)}', mainColor),
+          _tile('Almuerzos', '€${(user['total_lunch_cost'] ?? 0.0).toStringAsFixed(2)}', Colors.blue[700]!),
+          _tile('Gastos pagados', '€${(user['total_paid_by_type'] ?? 0.0).toStringAsFixed(2)}', Colors.orange[800]!),
+          _tile('Parte común', '€${(user['common_share'] ?? 0.0).toStringAsFixed(2)}', Colors.purple[700]!),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fila ha_aportado / debe / balance
+// ---------------------------------------------------------------------------
+class _BalanceDetailRow extends StatelessWidget {
+  final double haAportado;
+  final double debe;
+  final double balance;
+
+  const _BalanceDetailRow({
+    required this.haAportado,
+    required this.debe,
+    required this.balance,
+  });
+
+  Widget _tile(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Text(value,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(height: 2),
+            Text(label,
+                style: const TextStyle(fontSize: 11, color: Colors.black54),
+                textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final balanceColor = balance >= 0 ? Colors.green[700]! : Colors.red[700]!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          _tile('Ha aportado', '€${haAportado.toStringAsFixed(2)}', Colors.green[700]!),
+          _tile('Debe', '€${debe.toStringAsFixed(2)}', Colors.red[700]!),
+          _tile('Balance', '${balance >= 0 ? '+' : ''}€${balance.toStringAsFixed(2)}', balanceColor),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sección consumiciones
+// ---------------------------------------------------------------------------
+class _ConsumptionsSection extends StatelessWidget {
+  final List<dynamic> consumptions;
+  final Color mainColor;
+
+  const _ConsumptionsSection({required this.consumptions, required this.mainColor});
+
+  @override
+  Widget build(BuildContext context) {
+    if (consumptions.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(icon: Icons.local_drink, label: 'Consumiciones', color: mainColor),
+        ...consumptions.map((c) => ListTile(
+              dense: true,
+              title: Text(c['product_name'] ?? ''),
+              subtitle: Text(c['typology'] ?? ''),
+              trailing: Text(
+                'x${c['total_qty']}  €${(c['total_price'] ?? 0.0).toStringAsFixed(2)}',
+                style: TextStyle(fontWeight: FontWeight.w600, color: mainColor),
+              ),
+            )),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sección gastos pagados por tipo
+// ---------------------------------------------------------------------------
+class _ExpensesSection extends StatelessWidget {
+  final List<dynamic> expenses;
+  final Color mainColor;
+
+  const _ExpensesSection({required this.expenses, required this.mainColor});
+
+  @override
+  Widget build(BuildContext context) {
+    if (expenses.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(icon: Icons.receipt_long, label: 'Gastos pagados', color: Colors.orange[800]!),
+        ...expenses.map((e) => ListTile(
+              dense: true,
+              title: Text(e['expense_type'] ?? ''),
+              trailing: Text(
+                '€${(e['total_amount'] ?? 0.0).toStringAsFixed(2)}',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.orange[800]),
+              ),
+            )),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sección almuerzos
+// ---------------------------------------------------------------------------
+class _LunchSection extends StatelessWidget {
+  final List<dynamic> lunchCosts;
+  final Color mainColor;
+
+  const _LunchSection({required this.lunchCosts, required this.mainColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = lunchCosts.where((l) => (l['user_cost'] ?? 0.0) > 0).toList();
+    if (filtered.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(icon: Icons.restaurant, label: 'Almuerzos', color: Colors.blue[700]!),
+        ...filtered.map((l) => ListTile(
+              dense: true,
+              title: Text(l['description'] ?? 'Almuerzo'),
+              subtitle: Text(
+                '${l['user_people']} persona(s) • €${(l['cost_per_plate'] ?? 0.0).toStringAsFixed(2)}/plato',
+              ),
+              trailing: Text(
+                '€${(l['user_cost'] ?? 0.0).toStringAsFixed(2)}',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blue[700]),
+              ),
+            )),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sección gastos comunes (desglose + parte proporcional)
+// ---------------------------------------------------------------------------
+class _CommonExpensesSection extends StatelessWidget {
+  final List<dynamic> items;
+  final double commonShare;
+
+  const _CommonExpensesSection({required this.items, required this.commonShare});
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          icon: Icons.share,
+          label: 'Gastos comunes',
+          color: Colors.purple[700]!,
+        ),
+        ...items.map((e) => ListTile(
+              dense: true,
+              title: Text(e['concept'] ?? ''),
+              subtitle: Text('Total: €${(e['amount'] ?? 0.0).toStringAsFixed(2)}'),
+              trailing: Text(
+                '€${(e['user_share'] ?? 0.0).toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.purple[700],
+                ),
+              ),
+            )),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cabecera de sección interna
+// ---------------------------------------------------------------------------
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _SectionHeader({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(label,
+              style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
