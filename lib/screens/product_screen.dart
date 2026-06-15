@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
 import 'package:cep_flutter_web/widgets/standard_section.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
+import 'package:cep_flutter_web/widgets/empty_state.dart';
+import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 import 'package:cep_flutter_web/screens/consumption_screen.dart';
 
 class ProductScreen extends StatefulWidget {
@@ -32,7 +36,7 @@ class _ProductScreenState extends State<ProductScreen> {
     final response = await http.get(Uri.parse('$baseUrl/api/products/grouped'));
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
+      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       final Map<String, List<dynamic>> grouped = {};
       final Map<String, bool> expandStates = {};
 
@@ -66,19 +70,10 @@ class _ProductScreenState extends State<ProductScreen> {
       );
 
       if (res.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Consumición registrada"),
-            backgroundColor: const Color(0xFFD32F2F),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+        AppSnackBar.success(context, "Consumición registrada");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error de red: $e")),
-      );
+      AppSnackBar.error(context, "Error de red: $e");
     }
   }
 
@@ -150,7 +145,7 @@ class _ProductScreenState extends State<ProductScreen> {
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD32F2F),
+              backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             icon: const Icon(Icons.check),
@@ -209,62 +204,54 @@ class _ProductScreenState extends State<ProductScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color mainColor = const Color(0xFFD32F2F);
+    final Color mainColor = AppColors.primary;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Productos", style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
+        title: const Text("Productos"),
       ),
-      body: groupedProducts.isEmpty
-          ? const Center(child: Text("No hay productos disponibles"))
-          : ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        children: groupedProducts.entries.map((entry) {
-          final typology = entry.key;
-          final products = entry.value;
-          final expanded = expandedSections[typology] ?? false;
+      body: ResponsiveContainer(
+        child: groupedProducts.isEmpty
+            ? const EmptyState(
+                icon: Icons.fastfood,
+                title: "No hay productos disponibles",
+                message: "Cuando haya productos podrás registrar tus consumiciones.",
+              )
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                children: groupedProducts.entries.map((entry) {
+                  final typology = entry.key;
+                  final products = entry.value;
+                  final expanded = expandedSections[typology] ?? false;
 
-          return buildAccordion(
-            typology,
-            products,
-            expanded,
-                (value) => setState(() => expandedSections[typology] = value),
-            mainColor,
-          );
-        }).toList(),
-      ),
-      floatingActionButton: Container(
-        margin: const EdgeInsets.only(bottom: 12, right: 12),
-        child: ElevatedButton.icon(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ConsumptionScreen(
-                  userId: widget.userId,
-                  userName: widget.userName,
-                  eventId: widget.eventId,
-                ),
+                  return buildAccordion(
+                    typology,
+                    products,
+                    expanded,
+                    (value) => setState(() => expandedSections[typology] = value),
+                    mainColor,
+                  );
+                }).toList(),
               ),
-            );
-          },
-          icon: const Icon(Icons.receipt_long),
-          label: const Text(
-            "Mis consumiciones",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: mainColor,
-            foregroundColor: Colors.white,
-            elevation: 6,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            textStyle: const TextStyle(fontSize: 16),
-          ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ConsumptionScreen(
+                userId: widget.userId,
+                userName: widget.userName,
+                eventId: widget.eventId,
+              ),
+            ),
+          );
+        },
+        icon: const Icon(Icons.receipt_long),
+        label: const Text(
+          "Mis consumiciones",
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

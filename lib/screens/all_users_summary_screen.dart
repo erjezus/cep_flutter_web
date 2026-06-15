@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:cep_flutter_web/config/config.dart';
-import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
+import 'package:cep_flutter_web/widgets/empty_state.dart';
+import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
+import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 
 class AllUsersSummaryScreen extends StatefulWidget {
   final int eventId;
@@ -22,7 +25,7 @@ class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
   List<dynamic> usersData = [];
   bool isLoading = false;
   final baseUrl = AppConfig.baseUrl;
-  final Color mainColor = const Color(0xFFD32F2F);
+  final Color mainColor = AppColors.primary;
 
   @override
   void initState() {
@@ -51,9 +54,7 @@ class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.grey[800]),
-    );
+    AppSnackBar.error(context, msg);
   }
 
   @override
@@ -61,10 +62,7 @@ class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Resumen general', style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
+        title: const Text('Resumen general'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
@@ -74,16 +72,23 @@ class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
         ],
       ),
       body: SafeArea(
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : usersData.isEmpty
-                ? const Center(child: Text('No hay datos disponibles'))
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    itemCount: usersData.length,
-                    itemBuilder: (context, index) =>
-                        _UserCard(user: usersData[index], mainColor: mainColor),
-                  ),
+        child: ResponsiveContainer(
+          maxWidth: 800,
+          child: isLoading
+              ? const SkeletonList(itemCount: 6)
+              : usersData.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.people_outline,
+                      title: 'No hay datos disponibles',
+                      message: 'Cuando haya participantes verás aquí el balance de cada uno.',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      itemCount: usersData.length,
+                      itemBuilder: (context, index) =>
+                          _UserCard(user: usersData[index], mainColor: mainColor),
+                    ),
+        ),
       ),
     );
   }

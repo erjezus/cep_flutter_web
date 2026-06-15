@@ -6,7 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
+import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 
 class UploadExpenseScreen extends StatefulWidget {
   final int userId;
@@ -63,17 +66,18 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
         return SafeArea(
           child: Wrap(
             children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Tomar foto'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _pickImage(ImageSource.camera);
-                },
-              ),
+              if (!kIsWeb)
+                ListTile(
+                  leading: const Icon(Icons.camera_alt),
+                  title: const Text('Tomar foto'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _pickImage(ImageSource.camera);
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.photo_library),
-                title: const Text('Seleccionar de galería'),
+                title: Text(kIsWeb ? 'Seleccionar archivo' : 'Seleccionar de galería'),
                 onTap: () async {
                   Navigator.pop(context);
                   await _pickImage(ImageSource.gallery);
@@ -127,41 +131,27 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
         _isPaid = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Gasto guardado correctamente"),
-          backgroundColor: const Color(0xFFD32F2F),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
+      AppSnackBar.success(context, "Gasto guardado correctamente");
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("❌ Error al subir el gasto"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, "Error al subir el gasto");
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final mainColor = const Color(0xFFD32F2F);
+    final mainColor = AppColors.primary;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Nuevo gasto", style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
+        title: const Text("Nuevo gasto"),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
+      body: ResponsiveContainer(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: ListView(
             children: [
               StandardCard(
                 child: Column(
@@ -240,6 +230,7 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

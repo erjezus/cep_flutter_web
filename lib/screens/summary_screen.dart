@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
 
 class SummaryScreen extends StatefulWidget {
   final int userId;
@@ -43,20 +45,19 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color mainColor = const Color(0xFFD32F2F);
+    final Color mainColor = AppColors.primary;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Resumen del día",style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
+        title: const Text("Resumen del día"),
       ),
-      body: Center(
-        child: isLoading
-            ? const CircularProgressIndicator()
-            : Padding(
+      body: ResponsiveContainer(
+        maxWidth: 500,
+        child: Center(
+          child: isLoading
+              ? const CircularProgressIndicator()
+              : Padding(
           padding: const EdgeInsets.all(24.0),
           child: StandardCard(
             child: Column(
@@ -80,6 +81,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

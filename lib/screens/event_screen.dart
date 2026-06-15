@@ -3,7 +3,12 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/screens/event_menu_screen.dart';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
+import 'package:cep_flutter_web/widgets/responsive_grid.dart';
+import 'package:cep_flutter_web/widgets/empty_state.dart';
+import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
 
 class EventScreen extends StatefulWidget {
   final int userId;
@@ -17,96 +22,140 @@ class EventScreen extends StatefulWidget {
 
 class _EventScreenState extends State<EventScreen> {
   List events = [];
+  bool _isLoading = true;
   final baseUrl = AppConfig.baseUrl;
 
   @override
   void initState() {
     super.initState();
-    print("📡 initState: EventScreen cargado");
     fetchEvents();
   }
 
-  void fetchEvents() async {
-    print("⏳ fetchEvents lanzado");
-    final response = await http.get(Uri.parse('$baseUrl/api/events'));
-    print("📥 Status: ${response.statusCode}");
-    print("📥 Body: ${response.body}");
-
-    if (response.statusCode == 200) {
-      setState(() {
-        events = jsonDecode(response.body);
-      });
+  Future<void> fetchEvents() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/events'));
+      if (response.statusCode == 200) {
+        setState(() {
+          events = jsonDecode(utf8.decode(response.bodyBytes));
+        });
+      }
+    } catch (_) {
+      // se mantiene la lista vacía; la UI muestra el estado vacío
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color mainColor = const Color(0xFFB71C1C);
+    final Color mainColor = AppColors.primary;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text("Eventos", style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: events.isEmpty
-            ? Center(
-          child: Text(
-            "No hay eventos disponibles",
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-          ),
-        )
-            : ListView.separated(
-          itemCount: events.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 16),
-          itemBuilder: (context, index) {
-            final event = events[index];
-            return StandardCard(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EventMenuScreen(
-                        userId: widget.userId,
-                        userName: widget.userName,
-                        eventId: event['id'],
-                        eventName: event['name'],
-                      ),
-                    ),
-                  );
-                },
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: mainColor.withOpacity(0.1),
-                      child: Icon(Icons.event, color: mainColor),
-                      radius: 28,
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Text(
-                        event['name'],
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                    ),
-                    const Icon(Icons.arrow_forward_ios,
-                        size: 18, color: Colors.grey),
-                  ],
-                ),
+        title: const Text("Eventos"),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Hero(
+            tag: 'app-logo',
+            child: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Image.asset('assets/logo.png'),
               ),
-            );
-          },
+            ),
+          ),
         ),
+      ),
+      body: ResponsiveContainer(
+        maxWidth: 1000,
+        child: _isLoading
+            ? const SkeletonList(itemCount: 5)
+            : RefreshIndicator(
+                onRefresh: fetchEvents,
+                child: events.isEmpty
+                    ? ListView(
+                        children: const [
+                          SizedBox(height: 80),
+                          EmptyState(
+                            icon: Icons.event_busy,
+                            title: "No hay eventos disponibles",
+                            message: "Cuando se cree un evento aparecerá aquí.",
+                          ),
+                        ],
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.all(16.0),
+                        children: [
+                          ResponsiveGrid(
+                            children: events.map<Widget>((event) {
+                              return StandardCard(
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => EventMenuScreen(
+                                          userId: widget.userId,
+                                          userName: widget.userName,
+                                          eventId: event['id'],
+                                          eventName: event['name'],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: mainColor.withOpacity(0.1),
+                                        child: Icon(Icons.event, color: mainColor),
+                                        radius: 28,
+                                      ),
+                                      const SizedBox(width: 20),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              event['name'],
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.grey[800],
+                                              ),
+                                            ),
+                                            if (event['date'] != null) ...[
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                children: [
+                                                  Icon(Icons.calendar_today,
+                                                      size: 13, color: Colors.grey[500]),
+                                                  const SizedBox(width: 5),
+                                                  Text(
+                                                    event['date'].toString().split('T')[0],
+                                                    style: TextStyle(
+                                                        fontSize: 13,
+                                                        color: Colors.grey[600]),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      const Icon(Icons.arrow_forward_ios,
+                                          size: 18, color: Colors.grey),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+              ),
       ),
     );
   }

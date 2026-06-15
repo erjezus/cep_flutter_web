@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
+import 'package:cep_flutter_web/widgets/empty_state.dart';
+import 'package:cep_flutter_web/widgets/app_snackbar.dart';
+import 'package:cep_flutter_web/widgets/app_dialog.dart';
 import 'package:cep_flutter_web/screens/upload_lunch_expense_screen.dart';
 
 class LunchExpenseListScreen extends StatefulWidget {
@@ -38,35 +43,36 @@ class _LunchExpenseListScreenState extends State<LunchExpenseListScreen> {
       final url = Uri.parse('$baseUrl/api/lunches/expenses?lunchId=${widget.lunchId}');
       final res = await http.get(url);
       if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
         setState(() {
           expenses = data is List ? data : [];
         });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al cargar gastos')),
-        );
+        AppSnackBar.error(context, 'Error al cargar gastos');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error de red o de formato')),
-      );
+      AppSnackBar.error(context, 'Error de red o de formato');
     } finally {
       setState(() => isLoading = false);
     }
   }
 
   Future<void> deleteExpense(int id) async {
+    final confirmed = await AppDialog.confirm(
+      context,
+      title: '¿Eliminar gasto?',
+      message: 'Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      icon: Icons.delete_outline,
+      destructive: true,
+    );
+    if (!confirmed) return;
+
     final unlinkUrl = Uri.parse('$baseUrl/api/expense_lunch?expense_id=$id&lunch_id=${widget.lunchId}');
     final unlinkRes = await http.delete(unlinkUrl);
 
     if (unlinkRes.statusCode != 204) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Error al desasociar gasto del almuerzo"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, "Error al desasociar gasto del almuerzo");
       return;
     }
 
@@ -76,19 +82,9 @@ class _LunchExpenseListScreenState extends State<LunchExpenseListScreen> {
       setState(() {
         expenses.removeWhere((e) => e['id'] == id);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Gasto eliminado"),
-          backgroundColor: Color(0xFFD32F2F),
-        ),
-      );
+      AppSnackBar.success(context, "Gasto eliminado");
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Error al eliminar el gasto"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, "Error al eliminar el gasto");
     }
   }
 
@@ -165,43 +161,38 @@ class _LunchExpenseListScreenState extends State<LunchExpenseListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mainColor = const Color(0xFFD32F2F);
+    final mainColor = AppColors.primary;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Gastos del almuerzo', style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
+        title: const Text('Gastos del almuerzo'),
       ),
-      floatingActionButton: Container(
-        margin: const EdgeInsets.only(bottom: 12, right: 12),
-        child: ElevatedButton.icon(
-          onPressed: _navigateToAddExpense,
-          icon: const Icon(Icons.add_circle_outline),
-          label: const Text("Añadir gasto", style: TextStyle(fontWeight: FontWeight.bold)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: mainColor,
-            foregroundColor: Colors.white,
-            elevation: 6,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            textStyle: const TextStyle(fontSize: 16),
-          ),
-        ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _navigateToAddExpense,
+        icon: const Icon(Icons.add),
+        label: const Text("Añadir gasto", style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : expenses.isEmpty
-          ? const Center(child: Text('No hay gastos'))
-          : ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: expenses.length,
-        itemBuilder: (context, index) {
-          return buildExpenseTile(expenses[index], mainColor);
-        },
+      body: ResponsiveContainer(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : expenses.isEmpty
+                ? EmptyState(
+                    icon: Icons.receipt_long,
+                    title: 'No hay gastos',
+                    message: 'Añade los gastos de este almuerzo para repartir el coste.',
+                    actionLabel: 'Añadir gasto',
+                    actionIcon: Icons.add_circle_outline,
+                    onAction: _navigateToAddExpense,
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: expenses.length,
+                    itemBuilder: (context, index) {
+                      return buildExpenseTile(expenses[index], mainColor);
+                    },
+                  ),
       ),
     );
   }

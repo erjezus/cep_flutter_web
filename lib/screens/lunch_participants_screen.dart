@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
+import 'package:cep_flutter_web/widgets/empty_state.dart';
+import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 
 class LunchParticipantsScreen extends StatefulWidget {
   final int lunchId;
@@ -18,7 +21,6 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
   List participants = [];
   bool isLoading = false;
   final baseUrl = AppConfig.baseUrl;
-  final mainColor = const Color(0xFFD32F2F);
 
   @override
   void initState() {
@@ -33,7 +35,7 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
     final resCheck = await http.get(urlCheck);
 
     if (resCheck.statusCode == 200) {
-      final data = jsonDecode(resCheck.body);
+      final data = jsonDecode(utf8.decode(resCheck.bodyBytes));
       final List safeData = data is List ? data : [];
       final isAlreadyParticipant = safeData.any((p) => p['user_id'] == userId);
 
@@ -46,17 +48,13 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
         );
 
         if (resPost.statusCode != 201 && resPost.statusCode != 200) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Error al registrarte en el almuerzo')),
-          );
+          AppSnackBar.error(context, 'Error al registrarte en el almuerzo');
         }
       }
 
       await fetchParticipants();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al comprobar participantes')),
-      );
+      AppSnackBar.error(context, 'Error al comprobar participantes');
       setState(() => isLoading = false);
     }
   }
@@ -67,13 +65,11 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
     final res = await http.get(url);
     if (res.statusCode == 200) {
       setState(() {
-        participants = jsonDecode(res.body);
+        participants = jsonDecode(utf8.decode(res.bodyBytes));
         isLoading = false;
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al cargar participantes')),
-      );
+      AppSnackBar.error(context, 'Error al cargar participantes');
       setState(() => isLoading = false);
     }
   }
@@ -83,9 +79,7 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
     final url = Uri.parse('$baseUrl/api/lunch_participants');
     final res = await http.put(url, body: body, headers: {'Content-Type': 'application/json'});
     if (res.statusCode != 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al actualizar comensales')),
-      );
+      AppSnackBar.error(context, 'Error al actualizar comensales');
     }
   }
 
@@ -101,64 +95,67 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Participantes del almuerzo', style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
+        title: const Text('Participantes del almuerzo'),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : participants.isEmpty
-          ? const Center(child: Text('No hay participantes'))
-          : ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: participants.length + 1,
-        itemBuilder: (context, index) {
-          if (index == participants.length) {
-            return StandardCard(
-              margin: const EdgeInsets.only(top: 16),
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Total de comensales: $totalComensales',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            );
-          }
-
-          final p = participants[index];
-          return StandardCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text('${p['username']}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: p['num_people'] > 0
-                          ? () {
-                        setState(() => p['num_people']--);
-                        updateParticipant(p['id'], p['num_people']);
+      body: ResponsiveContainer(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : participants.isEmpty
+                ? const EmptyState(
+                    icon: Icons.group_outlined,
+                    title: 'No hay participantes',
+                    message: 'Aún no se ha apuntado nadie a este almuerzo.',
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: participants.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == participants.length) {
+                        return StandardCard(
+                          margin: const EdgeInsets.only(top: 16),
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'Total de comensales: $totalComensales',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        );
                       }
-                          : null,
-                    ),
-                    Text('${p['num_people']}', style: const TextStyle(fontSize: 16)),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      onPressed: () {
-                        setState(() => p['num_people']++);
-                        updateParticipant(p['id'], p['num_people']);
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
+
+                      final p = participants[index];
+                      return StandardCard(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text('${p['username']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                  onPressed: p['num_people'] > 0
+                                      ? () {
+                                          setState(() => p['num_people']--);
+                                          updateParticipant(p['id'], p['num_people']);
+                                        }
+                                      : null,
+                                ),
+                                Text('${p['num_people']}', style: const TextStyle(fontSize: 16)),
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  onPressed: () {
+                                    setState(() => p['num_people']++);
+                                    updateParticipant(p['id'], p['num_people']);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
       ),
     );
   }

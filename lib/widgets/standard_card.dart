@@ -9,18 +9,26 @@ class StandardCard extends StatelessWidget {
   const StandardCard({
     super.key,
     required this.child,
-    this.elevation = 4,
+    this.elevation = 0,
     this.padding = const EdgeInsets.symmetric(vertical: 20.0, horizontal: 24.0),
     this.margin = const EdgeInsets.symmetric(vertical: 8),
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Colors.white,
-      elevation: elevation,
+    return Container(
       margin: margin,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
       child: Padding(
         padding: padding,
         child: child,

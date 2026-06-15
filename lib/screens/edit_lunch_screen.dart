@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
+import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 
 class EditLunchScreen extends StatefulWidget {
   final int lunchId;
@@ -67,49 +70,49 @@ class _EditLunchScreenState extends State<EditLunchScreen> {
     if (res.statusCode == 200) {
       Navigator.pop(context, true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al actualizar almuerzo: ${res.statusCode}')),
-      );
+      AppSnackBar.error(context, 'Error al actualizar almuerzo: ${res.statusCode}');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final mainColor = const Color(0xFF388E3C);
+    final mainColor = AppColors.primary;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Editar Almuerzo'), backgroundColor: mainColor),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Fecha',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.calendar_today),
-                    onPressed: _pickDate,
+      appBar: AppBar(title: const Text('Editar Almuerzo')),
+      body: ResponsiveContainer(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                TextFormField(
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    labelText: 'Fecha',
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.calendar_today),
+                      onPressed: _pickDate,
+                    ),
                   ),
+                  controller: TextEditingController(text: _selectedDate.toLocal().toString().split(' ')[0]),
+                  validator: (v) => v == null || v.isEmpty ? 'Fecha requerida' : null,
                 ),
-                controller: TextEditingController(text: _selectedDate.toLocal().toString().split(' ')[0]),
-                validator: (v) => v == null || v.isEmpty ? 'Fecha requerida' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Descripción (opcional)'),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: mainColor, padding: const EdgeInsets.symmetric(vertical: 14)),
-                onPressed: _isSubmitting ? null : _submit,
-                child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Actualizar Almuerzo'),
-              ),
-            ],
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(labelText: 'Descripción (opcional)'),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: mainColor, padding: const EdgeInsets.symmetric(vertical: 14)),
+                  onPressed: _isSubmitting ? null : _submit,
+                  child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Actualizar Almuerzo'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -5,12 +5,12 @@ import 'package:cep_flutter_web/screens/upload_expense_screen.dart';
 import 'package:cep_flutter_web/screens/expense_list_screen.dart';
 import 'package:cep_flutter_web/screens/common_summary_screen.dart';
 import 'package:cep_flutter_web/screens/lunch_list_screen.dart';
-import 'package:cep_flutter_web/screens/create_lunch_screen.dart';
 import 'package:cep_flutter_web/screens/all_users_summary_screen.dart';
-import 'package:cep_flutter_web/widgets/standard_card.dart';
-import 'package:cep_flutter_web/widgets/standard_section.dart';
+import 'package:cep_flutter_web/screens/event_products_screen.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
 
-class EventMenuScreen extends StatefulWidget {
+class EventMenuScreen extends StatelessWidget {
   final int userId;
   final String userName;
   final int eventId;
@@ -24,275 +24,94 @@ class EventMenuScreen extends StatefulWidget {
     required this.eventName,
   });
 
-  @override
-  State<EventMenuScreen> createState() => _EventMenuScreenState();
-}
-
-class _EventMenuScreenState extends State<EventMenuScreen> {
-  String? expandedSection;
-
-  void toggleSection(String section) {
-    setState(() {
-      expandedSection = expandedSection == section ? null : section;
-    });
+  void _go(BuildContext context, Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color mainColor = const Color(0xFFB71C1C);
-    final Color accentColor = Colors.deepOrange;
+    final actions = <_MenuAction>[
+      _MenuAction(
+        icon: Icons.local_bar,
+        label: 'Consumir',
+        color: AppColors.primary,
+        onTap: () => _go(context,
+            ProductScreen(userId: userId, userName: userName, eventId: eventId)),
+      ),
+      _MenuAction(
+        icon: Icons.receipt_long,
+        label: 'Mis consumiciones',
+        color: Colors.grey.shade800,
+        onTap: () => _go(context,
+            ConsumptionScreen(userId: userId, userName: userName, eventId: eventId)),
+      ),
+      _MenuAction(
+        icon: Icons.add_circle,
+        label: 'Añadir gasto',
+        color: AppColors.food,
+        onTap: () => _go(context,
+            UploadExpenseScreen(userId: userId, eventId: eventId)),
+      ),
+      _MenuAction(
+        icon: Icons.table_chart,
+        label: 'Ver gastos',
+        color: AppColors.expenses,
+        onTap: () => _go(context,
+            ExpenseListScreen(userId: userId, eventId: eventId)),
+      ),
+      _MenuAction(
+        icon: Icons.lunch_dining,
+        label: 'Almuerzos',
+        color: AppColors.lunch,
+        onTap: () => _go(context,
+            LunchListScreen(eventId: eventId, userId: userId)),
+      ),
+      _MenuAction(
+        icon: Icons.sell,
+        label: 'Precios',
+        color: AppColors.prices,
+        onTap: () => _go(context,
+            EventProductsScreen(eventId: eventId, eventName: eventName)),
+      ),
+      _MenuAction(
+        icon: Icons.summarize,
+        label: 'Resumen total',
+        color: AppColors.blue,
+        onTap: () => _go(context,
+            CommonSummaryScreen(userId: userId, eventId: eventId)),
+      ),
+      _MenuAction(
+        icon: Icons.people_alt,
+        label: 'Resumen por usuario',
+        color: AppColors.users,
+        onTap: () => _go(context,
+            AllUsersSummaryScreen(eventId: eventId)),
+      ),
+    ];
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text(widget.eventName, style: const TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            // Accesos directos
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              margin: const EdgeInsets.only(bottom: 16),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "Accesos directos",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        _buildQuickAccess(
-                          icon: Icons.fastfood,
-                          label: "Consumir",
-                          color: mainColor,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ProductScreen(
-                                userId: widget.userId,
-                                userName: widget.userName,
-                                eventId: widget.eventId,
-                              ),
-                            ),
-                          ),
-                        ),
-                        _buildQuickAccess(
-                          icon: Icons.receipt_long,
-                          label: "Mis consumos",
-                          color: Colors.grey[800]!,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ConsumptionScreen(
-                                userId: widget.userId,
-                                userName: widget.userName,
-                                eventId: widget.eventId,
-                              ),
-                            ),
-                          ),
-                        ),
-                        _buildQuickAccess(
-                          icon: Icons.add_circle,
-                          label: "Añadir gasto",
-                          color: accentColor,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => UploadExpenseScreen(
-                                userId: widget.userId,
-                                eventId: widget.eventId,
-                              ),
-                            ),
-                          ),
-                        ),
-                        _buildQuickAccess(
-                          icon: Icons.event_note,
-                          label: "Almuerzos",
-                          color: Colors.green[700]!,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => LunchListScreen(
-                                eventId: widget.eventId,
-                                userId: widget.userId,
-                              ),
-                            ),
-                          ),
-                        ),
-                        _buildQuickAccess(
-                          icon: Icons.people_alt,
-                          label: "Resumen\nusuarios",
-                          color: Colors.indigo,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => AllUsersSummaryScreen(eventId: widget.eventId),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+      backgroundColor: AppColors.scaffoldBackground,
+      appBar: AppBar(title: Text(eventName)),
+      body: ResponsiveContainer(
+        maxWidth: 800,
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeader()),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              sliver: SliverGrid(
+                gridDelegate:
+                    const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 200,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 1.05,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _ActionCard(action: actions[index]),
+                  childCount: actions.length,
                 ),
               ),
-            ),
-
-            // Secciones normales
-            StandardSection(
-              title: "Consumiciones",
-              icon: Icons.local_bar,
-              color: mainColor,
-              initiallyExpanded: expandedSection == 'consumptions',
-              onToggle: () => toggleSection('consumptions'),
-              children: [
-                _buildMenuItem(
-                  title: "Consumir",
-                  subtitle: "Registrar consumiciones",
-                  icon: Icons.fastfood,
-                  color: mainColor,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProductScreen(
-                        userId: widget.userId,
-                        userName: widget.userName,
-                        eventId: widget.eventId,
-                      ),
-                    ),
-                  ),
-                ),
-                _buildMenuItem(
-                  title: "Mis consumiciones",
-                  subtitle: "Ver lo que has consumido",
-                  icon: Icons.receipt_long,
-                  color: Colors.grey[800]!,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ConsumptionScreen(
-                        userId: widget.userId,
-                        userName: widget.userName,
-                        eventId: widget.eventId,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            StandardSection(
-              title: "Almuerzos",
-              icon: Icons.lunch_dining,
-              color: Colors.green[700]!,
-              initiallyExpanded: expandedSection == 'lunches',
-              onToggle: () => toggleSection('lunches'),
-              children: [
-                _buildMenuItem(
-                  title: "Crear almuerzo",
-                  subtitle: "Añadir un nuevo almuerzo",
-                  icon: Icons.add,
-                  color: Colors.green[700]!,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CreateLunchScreen(eventId: widget.eventId),
-                    ),
-                  ),
-                ),
-                _buildMenuItem(
-                  title: "Gestionar almuerzos",
-                  subtitle: "Ver y editar almuerzos existentes",
-                  icon: Icons.event_note,
-                  color: Colors.green[700]!,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LunchListScreen(
-                        eventId: widget.eventId,
-                        userId: widget.userId,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            StandardSection(
-              title: "Gastos",
-              icon: Icons.receipt,
-              color: accentColor,
-              initiallyExpanded: expandedSection == 'expenses',
-              onToggle: () => toggleSection('expenses'),
-              children: [
-                _buildMenuItem(
-                  title: "Registrar gasto",
-                  subtitle: "Registrar un gasto",
-                  icon: Icons.add_circle,
-                  color: accentColor,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => UploadExpenseScreen(
-                        userId: widget.userId,
-                        eventId: widget.eventId,
-                      ),
-                    ),
-                  ),
-                ),
-                _buildMenuItem(
-                  title: "Ver gastos",
-                  subtitle: "Ver gastos registrados",
-                  icon: Icons.table_chart,
-                  color: Colors.grey[800]!,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ExpenseListScreen(
-                        userId: widget.userId,
-                        eventId: widget.eventId,
-                      ),
-                    ),
-                  ),
-                ),
-                _buildMenuItem(
-                   title: "Resumen total",
-                   subtitle: "Ver gastos totales",
-                   icon: Icons.group,
-                   color: accentColor,
-                   onTap: () => Navigator.push(
-                     context,
-                     MaterialPageRoute(
-                       builder: (_) => CommonSummaryScreen(
-                         userId: widget.userId,
-                         eventId: widget.eventId,
-                       ),
-                     ),
-                   ),
-                 ),
-                 _buildMenuItem(
-                   title: "Resumen por usuario",
-                   subtitle: "Balance de todos los participantes",
-                   icon: Icons.people_alt,
-                   color: Colors.indigo,
-                   onTap: () => Navigator.push(
-                     context,
-                     MaterialPageRoute(
-                       builder: (_) => AllUsersSummaryScreen(eventId: widget.eventId),
-                     ),
-                   ),
-                 ),
-               ],
             ),
           ],
         ),
@@ -300,49 +119,97 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
     );
   }
 
-  Widget _buildMenuItem({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return StandardCard(
-      elevation: 2,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 0),
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  Widget _buildQuickAccess({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: color.withOpacity(0.1),
-            child: Icon(icon, size: 28, color: color),
+          Text(
+            '¡Hola, $userName! 👋',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 13)),
+          const SizedBox(height: 4),
+          Text(
+            '¿Qué quieres hacer en $eventName?',
+            style: TextStyle(fontSize: 15, color: Colors.grey[600]),
+          ),
         ],
       ),
     );
   }
 }
+
+class _MenuAction {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _MenuAction({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+}
+
+class _ActionCard extends StatelessWidget {
+  final _MenuAction action;
+
+  const _ActionCard({required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      elevation: 0,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: action.onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: action.color.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(action.icon, size: 30, color: action.color),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  action.label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

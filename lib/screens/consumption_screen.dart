@@ -1,11 +1,16 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
 import 'package:cep_flutter_web/widgets/standard_section.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
+import 'package:cep_flutter_web/widgets/empty_state.dart';
+import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
+import 'package:cep_flutter_web/widgets/app_snackbar.dart';
+import 'package:cep_flutter_web/widgets/app_dialog.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -50,7 +55,7 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
         setState(() {
           consumptionsByDay = data;
           computeSummary(data);
@@ -92,26 +97,19 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.grey[800]),
-    );
+    AppSnackBar.error(context, message);
   }
 
   Future<void> _confirmDelete(int id) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("¿Eliminar consumición?"),
-        content: const Text("Esta acción no se puede deshacer."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancelar")),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Eliminar", style: TextStyle(color: Colors.red))),
-        ],
-      ),
+    final confirmed = await AppDialog.confirm(
+      context,
+      title: "¿Eliminar consumición?",
+      message: "Esta acción no se puede deshacer.",
+      confirmLabel: "Eliminar",
+      icon: Icons.delete_outline,
+      destructive: true,
     );
-    if (confirmed == true) _deleteConsumption(id);
+    if (confirmed) _deleteConsumption(id);
   }
 
   void _deleteConsumption(int id) async {
@@ -134,9 +132,7 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: const Color(0xFFD32F2F)),
-    );
+    AppSnackBar.success(context, message);
   }
 
   // ... [imports y clase intactos hasta _generatePdf]
@@ -239,15 +235,12 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color mainColor = const Color(0xFFD32F2F);
+    final Color mainColor = AppColors.primary;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Mis consumiciones", style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
+        title: const Text("Mis consumiciones"),
         actions: [
           IconButton(
             icon: const Icon(Icons.download, color: Colors.white),
@@ -257,24 +250,77 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
         ],
       ),
       body: SafeArea(
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : consumptionsByDay.isEmpty
-            ? const Center(child: Text("No hay consumiciones registradas"))
-            : ListView(
-          children: [
-            ...consumptionsByDay.map((dayData) {
-              final rawDate = dayData['date'];
-              final formattedDate =
-              DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate));
-              final List consumptions = dayData['consumptions'];
-              final isExpanded = expandedDates.contains(rawDate);
-              return buildAccordion(
-                  formattedDate, rawDate, consumptions, isExpanded, mainColor);
-            }).toList(),
-            const SizedBox(height: 12),
-            buildSummary(mainColor),
-          ],
+        child: ResponsiveContainer(
+          child: isLoading
+              ? const SkeletonList(itemCount: 5)
+              : consumptionsByDay.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.receipt_long,
+                      title: "No hay consumiciones registradas",
+                      message: "Cuando consumas algo aparecerá aquí, agrupado por día.",
+                    )
+                  : ListView(
+                      children: [
+                        ...consumptionsByDay.map((dayData) {
+                          final rawDate = dayData['date'];
+                          final formattedDate =
+                              DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate));
+                          final List consumptions = dayData['consumptions'];
+                          final isExpanded = expandedDates.contains(rawDate);
+                          return buildAccordion(
+                              formattedDate, rawDate, consumptions, isExpanded, mainColor);
+                        }).toList(),
+                        const SizedBox(height: 12),
+                        buildSummary(mainColor),
+                        const SizedBox(height: 80),
+                      ],
+                    ),
+        ),
+      ),
+      bottomNavigationBar: (isLoading || consumptionsByDay.isEmpty)
+          ? null
+          : _buildStickyTotal(mainColor),
+    );
+  }
+
+  /// Barra inferior fija que muestra siempre el total general, sin tener
+  /// que hacer scroll hasta el final de la lista.
+  Widget _buildStickyTotal(Color mainColor) {
+    return Material(
+      elevation: 8,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.receipt_long, color: mainColor, size: 22),
+                    const SizedBox(width: 8),
+                    const Text(
+                      "Total general",
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                Text(
+                  "€${grandTotal.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: mainColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
+import 'package:cep_flutter_web/widgets/empty_state.dart';
+import 'package:cep_flutter_web/widgets/app_snackbar.dart';
+import 'package:cep_flutter_web/widgets/app_dialog.dart';
 
 class ExpenseListScreen extends StatefulWidget {
   final int userId;
@@ -22,6 +27,24 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   final List<String> fixedTypeOrder = ['Común', 'Comida', 'Bebida', 'A cuenta', 'Otro'];
   bool onlyMine = false;
 
+  /// Color asociado a cada tipo de gasto.
+  Color _typeColor(String type) {
+    switch (type) {
+      case 'Bebida':
+        return AppColors.primary;
+      case 'Comida':
+        return AppColors.food;
+      case 'Común':
+        return AppColors.common;
+      case 'A cuenta':
+        return AppColors.blue;
+      case 'Almuerzo':
+        return AppColors.lunch;
+      default:
+        return Colors.grey.shade600;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -34,7 +57,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     );
 
     if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
+      final data = jsonDecode(utf8.decode(res.bodyBytes));
       final filtered = onlyMine ? data.where((e) => e['user_id'] == widget.userId).toList() : data;
 
       final Map<String, List> grouped = {};
@@ -54,6 +77,16 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   }
 
   Future<void> deleteExpense(int id, String type) async {
+    final confirmed = await AppDialog.confirm(
+      context,
+      title: "¿Eliminar gasto?",
+      message: "Esta acción no se puede deshacer.",
+      confirmLabel: "Eliminar",
+      icon: Icons.delete_outline,
+      destructive: true,
+    );
+    if (!confirmed) return;
+
     final response = await http.delete(
       Uri.parse('$baseUrl/api/expenses/$id'),
     );
@@ -61,12 +94,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       setState(() {
         expensesByType[type]?.removeWhere((e) => e['id'] == id);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Gasto eliminado"),
-          backgroundColor: const Color(0xFFD32F2F),
-        ),
-      );
+      AppSnackBar.success(context, "Gasto eliminado");
     }
   }
 
@@ -185,28 +213,53 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       0.0,
           (sum, item) => sum + (double.tryParse(item['amount'].toString()) ?? 0.0),
     );
+    final Color typeColor = _typeColor(title);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: StandardCard(
+        padding: EdgeInsets.zero,
         child: ExpansionTile(
           initiallyExpanded: expanded,
           onExpansionChanged: onToggle,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
           childrenPadding: const EdgeInsets.only(bottom: 12),
+          leading: Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: typeColor, shape: BoxShape.circle),
+          ),
           title: Text(
             title,
-            style: TextStyle(fontWeight: FontWeight.bold, color: mainColor),
+            style: TextStyle(fontWeight: FontWeight.bold, color: typeColor),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: typeColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  "€${total.toStringAsFixed(2)}",
+                  style: TextStyle(color: typeColor, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.expand_more),
+            ],
           ),
           children: [
-            ...items.map((e) => buildExpenseTile(e, mainColor)).toList(),
+            ...items.map((e) => buildExpenseTile(e, typeColor)).toList(),
             const Divider(),
             ListTile(
               title: const Text("Total"),
               trailing: Text(
                 "€${total.toStringAsFixed(2)}",
                 style: TextStyle(
-                  color: mainColor,
+                  color: typeColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -220,56 +273,59 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mainColor = const Color(0xFFD32F2F);
+    final mainColor = AppColors.primary;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Hoja de gastos", style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
+        title: const Text("Hoja de gastos"),
       ),
-      body: Column(
-        children: [
-          SwitchListTile(
-            value: onlyMine,
-            onChanged: (value) {
-              setState(() {
-                onlyMine = value;
-              });
-              fetchExpenses();
-            },
-            title: const Text("Ver solo mis gastos"),
-            activeColor: mainColor,
-          ),
-          Expanded(
-            child: expensesByType.isEmpty
-                ? const Center(child: Text("No hay gastos registrados"))
-                : ListView(
-              children: [
-                for (var type in fixedTypeOrder)
-                  if (expensesByType.containsKey(type))
-                    buildAccordion(
-                      type,
-                      expandedTypes[type] ?? false,
-                          (value) => setState(() => expandedTypes[type] = value),
-                      expensesByType[type]!,
-                      mainColor,
-                    ),
-                for (var type in expensesByType.keys)
-                  if (!fixedTypeOrder.contains(type))
-                    buildAccordion(
-                      type,
-                      expandedTypes[type] ?? false,
-                          (value) => setState(() => expandedTypes[type] = value),
-                      expensesByType[type]!,
-                      mainColor,
-                    ),
-              ],
+      body: ResponsiveContainer(
+        child: Column(
+          children: [
+            SwitchListTile(
+              value: onlyMine,
+              onChanged: (value) {
+                setState(() {
+                  onlyMine = value;
+                });
+                fetchExpenses();
+              },
+              title: const Text("Ver solo mis gastos"),
+              activeColor: mainColor,
             ),
-          ),
-        ],
+            Expanded(
+              child: expensesByType.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.receipt_long,
+                      title: "No hay gastos registrados",
+                      message: "Los gastos que se añadan aparecerán agrupados por tipo aquí.",
+                    )
+                  : ListView(
+                      children: [
+                        for (var type in fixedTypeOrder)
+                          if (expensesByType.containsKey(type))
+                            buildAccordion(
+                              type,
+                              expandedTypes[type] ?? false,
+                              (value) => setState(() => expandedTypes[type] = value),
+                              expensesByType[type]!,
+                              mainColor,
+                            ),
+                        for (var type in expensesByType.keys)
+                          if (!fixedTypeOrder.contains(type))
+                            buildAccordion(
+                              type,
+                              expandedTypes[type] ?? false,
+                              (value) => setState(() => expandedTypes[type] = value),
+                              expensesByType[type]!,
+                              mainColor,
+                            ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

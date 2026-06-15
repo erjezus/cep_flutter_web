@@ -7,7 +7,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:cep_flutter_web/config/config.dart';
+import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
+import 'package:cep_flutter_web/widgets/responsive_container.dart';
+import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 
 class UploadLunchExpenseScreen extends StatefulWidget {
   final int userId;
@@ -64,17 +67,18 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
         return SafeArea(
           child: Wrap(
             children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Tomar foto'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _pickImage(ImageSource.camera);
-                },
-              ),
+              if (!kIsWeb)
+                ListTile(
+                  leading: const Icon(Icons.camera_alt),
+                  title: const Text('Tomar foto'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _pickImage(ImageSource.camera);
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.photo_library),
-                title: const Text('Seleccionar de galería'),
+                title: Text(kIsWeb ? 'Seleccionar archivo' : 'Seleccionar de galería'),
                 onTap: () async {
                   Navigator.pop(context);
                   await _pickImage(ImageSource.gallery);
@@ -144,40 +148,34 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
         if (linkRes.statusCode == 201 || linkRes.statusCode == 200) {
           debugPrint("✅ Gasto enlazado al almuerzo correctamente");
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Error al enlazar gasto con almuerzo")),
-          );
+          AppSnackBar.error(context, "Error al enlazar gasto con almuerzo");
         }
       }
 
       if (mounted) Navigator.pop(context, true);
     } else {
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("❌ Error al subir el gasto"), backgroundColor: Colors.red),
-      );
+      AppSnackBar.error(context, "Error al subir el gasto");
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final mainColor = const Color(0xFFD32F2F);
+    final mainColor = AppColors.primary;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Nuevo gasto", style: TextStyle(color: Colors.white)),
-        backgroundColor: mainColor,
-        elevation: 0,
-        centerTitle: true,
+        title: const Text("Nuevo gasto"),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              StandardCard(
+      body: ResponsiveContainer(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: [
+                StandardCard(
                 child: Column(
                   children: [
                     TextFormField(
@@ -241,6 +239,7 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
