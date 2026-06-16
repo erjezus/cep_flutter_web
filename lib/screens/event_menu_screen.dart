@@ -48,20 +48,35 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
     _checkUnpaidExpenses();
   }
 
-  /// Comprueba si existen gastos sin pagar de cualquier usuario en el evento.
+  /// Comprueba si existen gastos sin pagar de cualquier usuario en el evento,
+  /// incluyendo los gastos asociados a los almuerzos.
   Future<void> _checkUnpaidExpenses() async {
     try {
+      // Mapa de gastos únicos por id para evitar contar dos veces el mismo
+      // gasto (los gastos de almuerzo pueden aparecer también en la consulta
+      // general de gastos del evento).
+      final Map<dynamic, dynamic> uniqueExpenses = {};
+
+      // 1) Gastos generales del evento.
       final res = await http.get(
         Uri.parse('${AppConfig.baseUrl}/api/expenses?eventId=${widget.eventId}'),
       );
-      if (res.statusCode != 200) return;
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
+        if (data is List) {
+          for (final e in data) {
+            uniqueExpenses[e['id']] = e;
+          }
+        }
+      }
 
-      final data = jsonDecode(utf8.decode(res.bodyBytes)) as List;
+      // 2) Gastos de cada almuerzo del evento.
+      await _collectLunchExpenses(uniqueExpenses);
+
       int count = 0;
       double total = 0.0;
-      for (final e in data) {
-        final isPaid = _asBool(e['paid']);
-        if (!isPaid) {
+      for (final e in uniqueExpenses.values) {
+        if (!_asBool(e['paid'])) {
           count++;
           total += (double.tryParse('${e['amount']}') ?? 0.0);
         }
@@ -76,6 +91,36 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _unpaidChecked = true);
+    }
+  }
+
+  /// Obtiene los gastos de todos los almuerzos del evento y los añade al mapa
+  /// de gastos únicos (clave: id del gasto).
+  Future<void> _collectLunchExpenses(Map<dynamic, dynamic> uniqueExpenses) async {
+    try {
+      final lunchesRes = await http.get(
+        Uri.parse('${AppConfig.baseUrl}/api/lunches?event_id=${widget.eventId}'),
+      );
+      if (lunchesRes.statusCode != 200) return;
+
+      final lunches = jsonDecode(utf8.decode(lunchesRes.bodyBytes));
+      if (lunches is! List) return;
+
+      for (final lunch in lunches) {
+        final lunchId = lunch['id'];
+        if (lunchId == null) continue;
+        final expRes = await http.get(
+          Uri.parse('${AppConfig.baseUrl}/api/lunches/expenses?lunchId=$lunchId'),
+        );
+        if (expRes.statusCode != 200) continue;
+        final expData = jsonDecode(utf8.decode(expRes.bodyBytes));
+        if (expData is! List) continue;
+        for (final e in expData) {
+          uniqueExpenses[e['id']] = e;
+        }
+      }
+    } catch (_) {
+      // Si falla la carga de almuerzos, mantenemos solo los gastos generales.
     }
   }
 
