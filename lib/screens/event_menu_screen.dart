@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/screens/product_screen.dart';
 import 'package:cep_flutter_web/screens/consumption_screen.dart';
 import 'package:cep_flutter_web/screens/upload_expense_screen.dart';
@@ -7,12 +10,14 @@ import 'package:cep_flutter_web/screens/common_summary_screen.dart';
 import 'package:cep_flutter_web/screens/lunch_list_screen.dart';
 import 'package:cep_flutter_web/screens/all_users_summary_screen.dart';
 import 'package:cep_flutter_web/screens/event_products_screen.dart';
+import 'package:cep_flutter_web/screens/users_management_screen.dart';
 import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/responsive_container.dart';
 
-class EventMenuScreen extends StatelessWidget {
+class EventMenuScreen extends StatefulWidget {
   final int userId;
   final String userName;
+  final String userRole;
   final int eventId;
   final String eventName;
 
@@ -22,7 +27,68 @@ class EventMenuScreen extends StatelessWidget {
     required this.userName,
     required this.eventId,
     required this.eventName,
+    this.userRole = 'USER',
   });
+
+  @override
+  State<EventMenuScreen> createState() => _EventMenuScreenState();
+}
+
+class _EventMenuScreenState extends State<EventMenuScreen> {
+  bool _unpaidChecked = false;
+  int _unpaidCount = 0;
+  double _unpaidTotal = 0.0;
+  bool _unpaidDismissed = false;
+
+  bool get _isAdmin => widget.userRole.toUpperCase() == 'ADMIN';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUnpaidExpenses();
+  }
+
+  /// Comprueba si existen gastos sin pagar de cualquier usuario en el evento.
+  Future<void> _checkUnpaidExpenses() async {
+    try {
+      final res = await http.get(
+        Uri.parse('${AppConfig.baseUrl}/api/expenses?eventId=${widget.eventId}'),
+      );
+      if (res.statusCode != 200) return;
+
+      final data = jsonDecode(utf8.decode(res.bodyBytes)) as List;
+      int count = 0;
+      double total = 0.0;
+      for (final e in data) {
+        final isPaid = _asBool(e['paid']);
+        if (!isPaid) {
+          count++;
+          total += (double.tryParse('${e['amount']}') ?? 0.0);
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _unpaidChecked = true;
+        _unpaidCount = count;
+        _unpaidTotal = total;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _unpaidChecked = true);
+    }
+  }
+
+  /// Normaliza el campo `paid` que puede llegar como bool, num o string.
+  bool _asBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final v = value.toLowerCase();
+      return v == 'true' || v == '1';
+    }
+    return false;
+  }
 
   void _go(BuildContext context, Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
@@ -30,6 +96,11 @@ class EventMenuScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userId = widget.userId;
+    final userName = widget.userName;
+    final userRole = widget.userRole;
+    final eventId = widget.eventId;
+    final eventName = widget.eventName;
     final actions = <_MenuAction>[
       _MenuAction(
         icon: Icons.local_bar,
@@ -67,13 +138,6 @@ class EventMenuScreen extends StatelessWidget {
             LunchListScreen(eventId: eventId, userId: userId)),
       ),
       _MenuAction(
-        icon: Icons.sell,
-        label: 'Precios',
-        color: AppColors.prices,
-        onTap: () => _go(context,
-            EventProductsScreen(eventId: eventId, eventName: eventName)),
-      ),
-      _MenuAction(
         icon: Icons.summarize,
         label: 'Resumen total',
         color: AppColors.blue,
@@ -89,6 +153,32 @@ class EventMenuScreen extends StatelessWidget {
       ),
     ];
 
+    if (_isAdmin) {
+      actions.add(
+        _MenuAction(
+          icon: Icons.sell,
+          label: 'Precios',
+          color: AppColors.prices,
+          onTap: () => _go(context,
+              EventProductsScreen(eventId: eventId, eventName: eventName)),
+        ),
+      );
+      actions.add(
+        _MenuAction(
+          icon: Icons.manage_accounts,
+          label: 'Gestión de usuarios',
+          color: AppColors.primaryDark,
+          onTap: () => _go(
+            context,
+            UsersManagementScreen(
+              currentUserId: userId,
+              currentUserRole: userRole,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
       appBar: AppBar(title: Text(eventName)),
@@ -97,6 +187,8 @@ class EventMenuScreen extends StatelessWidget {
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(child: _buildHeader()),
+            if (_unpaidChecked && _unpaidCount > 0 && !_unpaidDismissed)
+              SliverToBoxAdapter(child: _buildUnpaidBanner()),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               sliver: SliverGrid(
@@ -126,15 +218,91 @@ class EventMenuScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '¡Hola, $userName! 👋',
+            '¡Hola, ${widget.userName}! 👋',
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
-            '¿Qué quieres hacer en $eventName?',
+            '¿Qué quieres hacer en ${widget.eventName}?',
             style: TextStyle(fontSize: 15, color: Colors.grey[600]),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Aviso visible cuando existen gastos sin pagar en el evento.
+  Widget _buildUnpaidBanner() {
+    final plural = _unpaidCount == 1 ? 'gasto' : 'gastos';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.negative.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.negative.withOpacity(0.3)),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.negative.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.warning_amber_rounded,
+                  color: AppColors.negative, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hay $_unpaidCount $plural sin pagar',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: AppColors.negative,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Importe pendiente: €${_unpaidTotal.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: AppColors.negative,
+                    ),
+                    icon: const Icon(Icons.table_chart, size: 18),
+                    label: const Text('Ver gastos sin pagar'),
+                    onPressed: () => _go(
+                      context,
+                      ExpenseListScreen(
+                        userId: widget.userId,
+                        eventId: widget.eventId,
+                        initialUnpaidOnly: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Descartar',
+              icon: const Icon(Icons.close, size: 20),
+              color: Colors.grey[600],
+              onPressed: () => setState(() => _unpaidDismissed = true),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -12,8 +12,14 @@ import 'package:cep_flutter_web/widgets/app_dialog.dart';
 class ExpenseListScreen extends StatefulWidget {
   final int userId;
   final int eventId;
+  final bool initialUnpaidOnly;
 
-  const ExpenseListScreen({required this.userId, required this.eventId, super.key});
+  const ExpenseListScreen({
+    required this.userId,
+    required this.eventId,
+    this.initialUnpaidOnly = false,
+    super.key,
+  });
 
   @override
   State<ExpenseListScreen> createState() => _ExpenseListScreenState();
@@ -26,6 +32,18 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
 
   final List<String> fixedTypeOrder = ['Común', 'Comida', 'Bebida', 'A cuenta', 'Otro'];
   bool onlyMine = false;
+  bool onlyUnpaid = false;
+
+  /// Normaliza el campo `paid` que puede llegar como bool, num o string.
+  bool _asBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final v = value.toLowerCase();
+      return v == 'true' || v == '1';
+    }
+    return false;
+  }
 
   /// Color asociado a cada tipo de gasto.
   Color _typeColor(String type) {
@@ -48,6 +66,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   @override
   void initState() {
     super.initState();
+    onlyUnpaid = widget.initialUnpaidOnly;
     fetchExpenses();
   }
 
@@ -58,7 +77,12 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
 
     if (res.statusCode == 200) {
       final data = jsonDecode(utf8.decode(res.bodyBytes));
-      final filtered = onlyMine ? data.where((e) => e['user_id'] == widget.userId).toList() : data;
+      var filtered = onlyMine
+          ? data.where((e) => e['user_id'] == widget.userId).toList()
+          : data;
+      if (onlyUnpaid) {
+        filtered = filtered.where((e) => !_asBool(e['paid'])).toList();
+      }
 
       final Map<String, List> grouped = {};
       for (var e in filtered) {
@@ -292,6 +316,17 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                 fetchExpenses();
               },
               title: const Text("Ver solo mis gastos"),
+              activeColor: mainColor,
+            ),
+            SwitchListTile(
+              value: onlyUnpaid,
+              onChanged: (value) {
+                setState(() {
+                  onlyUnpaid = value;
+                });
+                fetchExpenses();
+              },
+              title: const Text("Ver solo gastos sin pagar"),
               activeColor: mainColor,
             ),
             Expanded(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/screens/event_menu_screen.dart';
+import 'package:cep_flutter_web/screens/users_management_screen.dart';
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
@@ -13,8 +14,13 @@ import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
 class EventScreen extends StatefulWidget {
   final int userId;
   final String userName;
+  final String userRole;
 
-  EventScreen({required this.userId,required this.userName});
+  EventScreen({
+    required this.userId,
+    required this.userName,
+    this.userRole = 'USER',
+  });
 
   @override
   State<EventScreen> createState() => _EventScreenState();
@@ -67,6 +73,24 @@ class _EventScreenState extends State<EventScreen> {
             ),
           ),
         ),
+        actions: [
+          if (widget.userRole.toUpperCase() == 'ADMIN')
+            IconButton(
+              icon: const Icon(Icons.manage_accounts),
+              tooltip: 'Gestión de usuarios',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => UsersManagementScreen(
+                      currentUserId: widget.userId,
+                      currentUserRole: widget.userRole,
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
       ),
       body: ResponsiveContainer(
         maxWidth: 1000,
@@ -97,12 +121,13 @@ class _EventScreenState extends State<EventScreen> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => EventMenuScreen(
-                                          userId: widget.userId,
-                                          userName: widget.userName,
-                                          eventId: event['id'],
-                                          eventName: event['name'],
-                                        ),
+                                    builder: (_) => EventMenuScreen(
+                                      userId: widget.userId,
+                                      userName: widget.userName,
+                                      userRole: widget.userRole,
+                                      eventId: event['id'],
+                                      eventName: event['name'],
+                                    ),
                                       ),
                                     );
                                   },

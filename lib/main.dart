@@ -120,6 +120,7 @@ class MyApp extends StatelessWidget {
             ? EventScreen(
           userId: backendUser['id'],
           userName: backendUser['username'],
+          userRole: (backendUser['role'] ?? 'USER').toString(),
         )
             : LoginScreen(),
       )
@@ -375,6 +376,7 @@ class _LoginScreenState extends State<LoginScreen> {
           builder: (_) => EventScreen(
             userId: backendUser['id'],
             userName: backendUser['username'],
+            userRole: (backendUser['role'] ?? 'USER').toString(),
           ),
         ),
       );
