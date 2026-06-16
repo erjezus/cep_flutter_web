@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/screens/event_menu_screen.dart';
 import 'package:cep_flutter_web/screens/users_management_screen.dart';
+import 'package:cep_flutter_web/screens/events_management_screen.dart';
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
@@ -53,9 +54,22 @@ class _EventScreenState extends State<EventScreen> {
     }
   }
 
+  bool get _isAdmin => widget.userRole.toUpperCase() == 'ADMIN';
+
+  /// Eventos visibles según el rol:
+  /// - Admin: todos los eventos.
+  /// - Resto: solo los que tienen `status == 'active'`.
+  List get _visibleEvents {
+    if (_isAdmin) return events;
+    return events
+        .where((e) => (e['status'] ?? '').toString().toLowerCase() == 'active')
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color mainColor = AppColors.primary;
+    final visibleEvents = _visibleEvents;
 
     return Scaffold(
       appBar: AppBar(
@@ -74,7 +88,22 @@ class _EventScreenState extends State<EventScreen> {
           ),
         ),
         actions: [
-          if (widget.userRole.toUpperCase() == 'ADMIN')
+          if (widget.userRole.toUpperCase() == 'ADMIN') ...[
+            IconButton(
+              icon: const Icon(Icons.edit_calendar),
+              tooltip: 'Gestión de eventos',
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EventsManagementScreen(
+                      currentUserRole: widget.userRole,
+                    ),
+                  ),
+                );
+                fetchEvents();
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.manage_accounts),
               tooltip: 'Gestión de usuarios',
@@ -90,6 +119,7 @@ class _EventScreenState extends State<EventScreen> {
                 );
               },
             ),
+          ],
         ],
       ),
       body: ResponsiveContainer(
@@ -98,7 +128,7 @@ class _EventScreenState extends State<EventScreen> {
             ? const SkeletonList(itemCount: 5)
             : RefreshIndicator(
                 onRefresh: fetchEvents,
-                child: events.isEmpty
+                child: visibleEvents.isEmpty
                     ? ListView(
                         children: const [
                           SizedBox(height: 80),
@@ -113,7 +143,7 @@ class _EventScreenState extends State<EventScreen> {
                         padding: const EdgeInsets.all(16.0),
                         children: [
                           ResponsiveGrid(
-                            children: events.map<Widget>((event) {
+                            children: visibleEvents.map<Widget>((event) {
                               return StandardCard(
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(20),
@@ -151,7 +181,7 @@ class _EventScreenState extends State<EventScreen> {
                                                 color: Colors.grey[800],
                                               ),
                                             ),
-                                            if (event['date'] != null) ...[
+                                            if (event['created_at'] != null) ...[
                                               const SizedBox(height: 4),
                                               Row(
                                                 children: [
@@ -159,7 +189,7 @@ class _EventScreenState extends State<EventScreen> {
                                                       size: 13, color: Colors.grey[500]),
                                                   const SizedBox(width: 5),
                                                   Text(
-                                                    event['date'].toString().split('T')[0],
+                                                    event['created_at'].toString().split('T')[0],
                                                     style: TextStyle(
                                                         fontSize: 13,
                                                         color: Colors.grey[600]),

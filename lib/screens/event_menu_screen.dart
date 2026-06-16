@@ -173,7 +173,7 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
         label: 'Ver gastos',
         color: AppColors.expenses,
         onTap: () => _go(context,
-            ExpenseListScreen(userId: userId, eventId: eventId)),
+            ExpenseListScreen(userId: userId, eventId: eventId, userRole: userRole)),
       ),
       _MenuAction(
         icon: Icons.lunch_dining,
@@ -333,6 +333,7 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
                       ExpenseListScreen(
                         userId: widget.userId,
                         eventId: widget.eventId,
+                        userRole: widget.userRole,
                         initialUnpaidOnly: true,
                       ),
                     ),

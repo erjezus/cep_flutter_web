@@ -13,11 +13,13 @@ class ExpenseListScreen extends StatefulWidget {
   final int userId;
   final int eventId;
   final bool initialUnpaidOnly;
+  final String userRole;
 
   const ExpenseListScreen({
     required this.userId,
     required this.eventId,
     this.initialUnpaidOnly = false,
+    this.userRole = 'USER',
     super.key,
   });
 
@@ -33,6 +35,11 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   final List<String> fixedTypeOrder = ['Común', 'Comida', 'Bebida', 'A cuenta', 'Otro'];
   bool onlyMine = false;
   bool onlyUnpaid = false;
+
+  /// Lista de usuarios del sistema (para que el admin pueda reasignar gastos).
+  List<dynamic> _users = [];
+
+  bool get _isAdmin => widget.userRole.toUpperCase() == 'ADMIN';
 
   /// Normaliza el campo `paid` que puede llegar como bool, num o string.
   bool _asBool(dynamic value) {
@@ -68,6 +75,110 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     super.initState();
     onlyUnpaid = widget.initialUnpaidOnly;
     fetchExpenses();
+    if (_isAdmin) fetchUsers();
+  }
+
+  /// Carga la lista de usuarios (solo necesaria para el admin al reasignar).
+  Future<void> fetchUsers() async {
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/api/users'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
+        if (data is List) {
+          setState(() => _users = data);
+        }
+      }
+    } catch (_) {
+      // Si falla, simplemente no se podrá reasignar hasta reintentar.
+    }
+  }
+
+  /// Permite al admin cambiar el usuario que registró un gasto.
+  Future<void> changeExpenseUser(dynamic expense, String type) async {
+    if (_users.isEmpty) {
+      await fetchUsers();
+      if (_users.isEmpty) {
+        AppSnackBar.error(context, 'No se pudo cargar la lista de usuarios');
+        return;
+      }
+    }
+
+    final currentUserId = expense['user_id'];
+    int? selectedUserId = _users.any((u) => u['id'] == currentUserId)
+        ? currentUserId as int?
+        : null;
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        int? localSelected = selectedUserId;
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Cambiar usuario del gasto'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Gasto: ${expense['concept'] ?? ''}',
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Usuario',
+                      border: OutlineInputBorder(),
+                    ),
+                    value: localSelected,
+                    items: _users
+                        .map<DropdownMenuItem<int>>((u) => DropdownMenuItem<int>(
+                              value: u['id'] as int,
+                              child: Text(
+                                (u['username'] ?? u['email'] ?? 'Usuario ${u['id']}').toString(),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (v) => setLocal(() => localSelected = v),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: localSelected == null
+                      ? null
+                      : () => Navigator.pop(ctx, localSelected),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null || result == currentUserId) return;
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/api/expenses/${expense['id']}'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'user_id': result}),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      AppSnackBar.success(context, 'Usuario del gasto actualizado');
+      fetchExpenses();
+    } else {
+      AppSnackBar.error(context, 'Error al cambiar el usuario del gasto');
+    }
   }
 
   void fetchExpenses() async {
@@ -147,6 +258,12 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
               ),
+              if (_isAdmin)
+                IconButton(
+                  icon: Icon(Icons.manage_accounts, color: AppColors.blue),
+                  onPressed: () => changeExpenseUser(e, e['expense_type']),
+                  tooltip: 'Cambiar usuario',
+                ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                 onPressed: () => deleteExpense(e['id'], e['expense_type']),
