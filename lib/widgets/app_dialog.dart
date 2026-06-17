@@ -23,29 +23,29 @@ class AppDialog {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: accent.withOpacity(0.12),
-                shape: BoxShape.circle,
+                color: accent.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: accent, size: 30),
+              child: Icon(icon, color: accent, size: 24),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
             ),
           ],
         ),
         content: Text(
           message,
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey[700], height: 1.3),
+          style: TextStyle(color: Colors.grey[600], height: 1.4, fontSize: 14),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
@@ -57,7 +57,8 @@ class AppDialog {
             style: ElevatedButton.styleFrom(
               backgroundColor: accent,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(confirmLabel),

@@ -156,19 +156,13 @@ class _EventsManagementScreenState extends State<EventsManagementScreen> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Buscar por nombre',
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
                       : IconButton(
-                          icon: const Icon(Icons.clear),
+                          icon: const Icon(Icons.clear, size: 18),
                           onPressed: () => _searchController.clear(),
                         ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: Colors.grey[200]!),
-                  ),
                 ),
               ),
             ),
@@ -261,17 +255,26 @@ class _EventsManagementScreenState extends State<EventsManagementScreen> {
         final e = _filteredEvents[index];
         return Material(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             onTap: () => _edit(e),
-            child: Padding(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFEEEEEE)),
+              ),
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
-                    child: const Icon(Icons.event, color: AppColors.primary),
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.09),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.event, color: AppColors.primary, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -314,16 +317,17 @@ class _EventsManagementScreenState extends State<EventsManagementScreen> {
   Widget _statusChip(dynamic status) {
     final s = (status ?? '').toString().toLowerCase();
     final isActive = s == 'active';
-    final color = isActive ? AppColors.positive : Colors.grey;
+    final color = isActive ? AppColors.positive : Colors.grey.shade600;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Text(
         isActive ? 'ACTIVO' : (s.isEmpty ? 'SIN ESTADO' : s.toUpperCase()),
-        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+        style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11),
       ),
     );
   }

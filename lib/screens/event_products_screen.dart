@@ -302,13 +302,11 @@ class _EventProductsScreenState extends State<EventProductsScreen> {
     final Color mainColor = AppColors.primary;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(
           widget.eventName != null
               ? "Precios · ${widget.eventName}"
-              : "Precios del evento",
-          style: const TextStyle(color: Colors.white),
+              : "Precios",
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(

@@ -234,19 +234,26 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
             SliverToBoxAdapter(child: _buildHeader()),
             if (_unpaidChecked && _unpaidCount > 0 && !_unpaidDismissed)
               SliverToBoxAdapter(child: _buildUnpaidBanner()),
+            // Lista de navegación agrupada en una sola tarjeta
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              sliver: SliverGrid(
-                gridDelegate:
-                    const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 200,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 1.05,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _ActionCard(action: actions[index]),
-                  childCount: actions.length,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              sliver: SliverToBoxAdapter(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFEEEEEE)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      for (int i = 0; i < actions.length; i++) ...[
+                        _ActionTile(action: actions[i]),
+                        if (i < actions.length - 1)
+                          const Divider(height: 1, indent: 68, endIndent: 0),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -368,59 +375,43 @@ class _MenuAction {
   });
 }
 
-class _ActionCard extends StatelessWidget {
+class _ActionTile extends StatelessWidget {
   final _MenuAction action;
 
-  const _ActionCard({required this.action});
+  const _ActionTile({required this.action});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      elevation: 0,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: action.onTap,
-        child: Ink(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+    return InkWell(
+      onTap: action.onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            // Icono en contenedor cuadrado redondeado (pequeño y discreto)
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: action.color.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(9),
               ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: action.color.withOpacity(0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(action.icon, size: 30, color: action.color),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  action.label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+              child: Icon(action.icon, size: 19, color: action.color),
             ),
-          ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                action.label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                size: 22, color: Colors.grey.shade400),
+          ],
         ),
       ),
     );

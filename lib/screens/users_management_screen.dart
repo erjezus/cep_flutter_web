@@ -170,27 +170,21 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Buscar por username o email',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                          },
-                        ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: Colors.grey[200]!),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por username o email',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                            },
+                          ),
                   ),
                 ),
-              ),
             ),
             Expanded(child: _buildBody()),
           ],
@@ -278,25 +272,36 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
       itemCount: _filteredUsers.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final u = _filteredUsers[index];
         return Material(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             onTap: () => _edit(u),
-            child: Padding(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFEEEEEE)),
+              ),
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    backgroundColor: AppColors.users.withOpacity(0.12),
-                    child: Text(
-                      u.username.isNotEmpty ? u.username[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                          color: AppColors.users, fontWeight: FontWeight.bold),
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.users.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        u.username.isNotEmpty ? u.username[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                            color: AppColors.users, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -310,8 +315,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                               child: Text(
                                 u.username,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -322,8 +326,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                         Text(
                           u.email,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 13, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                         ),
                       ],
                     ),
@@ -342,15 +345,15 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
     final isAdmin = role.toUpperCase() == 'ADMIN';
     final color = isAdmin ? AppColors.primary : AppColors.blue;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Text(
         role.toUpperCase(),
-        style: TextStyle(
-            color: color, fontWeight: FontWeight.bold, fontSize: 12),
+        style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11),
       ),
     );
   }

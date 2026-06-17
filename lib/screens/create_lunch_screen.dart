@@ -50,13 +50,12 @@ class _CreateLunchScreenState extends State<CreateLunchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Crear Almuerzo'),
+        title: const Text('Crear almuerzo'),
       ),
       body: ResponsiveContainer(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Form(
             key: _formKey,
             child: ListView(
@@ -64,33 +63,28 @@ class _CreateLunchScreenState extends State<CreateLunchScreen> {
                 TextFormField(
                   controller: _descriptionController,
                   maxLines: 3,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Descripción',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   validator: (v) =>
                   v == null || v.trim().isEmpty ? 'Este campo es obligatorio' : null,
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
+                  height: 48,
                   child: ElevatedButton(
                     onPressed: _isSubmitting ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: mainColor,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
                     child: _isSubmitting
                         ? const SizedBox(
-                      height: 22,
-                      width: 22,
+                      height: 20,
+                      width: 20,
                       child: CircularProgressIndicator(
                         color: Colors.white,
                         strokeWidth: 2,
                       ),
                     )
-                        : const Text("Crear Almuerzo"),
+                        : const Text('Crear almuerzo'),
                   ),
                 ),
               ],

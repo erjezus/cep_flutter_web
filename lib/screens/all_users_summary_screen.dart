@@ -34,11 +34,13 @@ class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
   }
 
   Future<void> fetchAllUsers() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/summary/all-users?eventId=${widget.eventId}'),
       );
+      if (!mounted) return;
       if (response.statusCode == 200) {
         setState(() {
           usersData = jsonDecode(utf8.decode(response.bodyBytes));
@@ -47,22 +49,23 @@ class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
         _showError('Error al cargar el resumen');
       }
     } catch (_) {
+      if (!mounted) return;
       _showError('Error de red al cargar el resumen');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   void _showError(String msg) {
+    if (!mounted) return;
     AppSnackBar.error(context, msg);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Resumen general'),
+        title: const Text('Resumen por usuario'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
@@ -290,14 +293,17 @@ class _UserCardState extends State<_UserCard> {
     final haAportado = (u['ha_aportado'] ?? 0.0).toDouble();
     final balanceColor = balance >= 0 ? Colors.green[700]! : Colors.red[700]!;
     final balanceLabel = balance >= 0
-        ? '✅ Le deben €${balance.toStringAsFixed(2)}'
-        : '❌ Debe €${balance.abs().toStringAsFixed(2)}';
+        ? 'Le deben €${balance.toStringAsFixed(2)}'
+        : 'Debe €${balance.abs().toStringAsFixed(2)}';
 
     return Card(
       color: Colors.white,
-      elevation: 6,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFEEEEEE)),
+      ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
@@ -305,11 +311,18 @@ class _UserCardState extends State<_UserCard> {
           onExpansionChanged: (v) => setState(() => _expanded = v),
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          leading: CircleAvatar(
-            backgroundColor: color.withOpacity(0.12),
-            child: Text(
-              (u['username'] as String? ?? '?')[0].toUpperCase(),
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          leading: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                (u['username'] as String? ?? '?')[0].toUpperCase(),
+                style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15),
+              ),
             ),
           ),
           title: Text(
@@ -414,18 +427,19 @@ class _BalanceDetailRow extends StatelessWidget {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10),
+          color: color.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.15)),
         ),
         child: Column(
           children: [
             Text(value,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
             const SizedBox(height: 2),
             Text(label,
-                style: const TextStyle(fontSize: 11, color: Colors.black54),
+                style: const TextStyle(fontSize: 10, color: Colors.black54),
                 textAlign: TextAlign.center),
           ],
         ),

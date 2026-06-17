@@ -51,56 +51,75 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
-          centerTitle: true,
+          // Título alineado a la izquierda — estándar en web
+          centerTitle: false,
           titleTextStyle: TextStyle(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: 17,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.1,
           ),
           iconTheme: IconThemeData(color: Colors.white),
         ),
-        // Sombras suaves y difusas en todas las tarjetas
         cardTheme: CardThemeData(
           elevation: 0,
           color: Colors.white,
           surfaceTintColor: Colors.white,
-          shadowColor: Colors.black.withOpacity(0.06),
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          // Radio 12: más profesional que el 20 original
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Color(0xFFEEEEEE)),
+          ),
         ),
-        // Jerarquía tipográfica clara
         textTheme: Typography.blackCupertino.copyWith(
-          titleLarge: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          titleMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          bodyMedium: const TextStyle(fontSize: 15, height: 1.3),
+          titleLarge: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.3),
+          titleMedium: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          bodyMedium: const TextStyle(fontSize: 14, height: 1.5),
           bodySmall: TextStyle(fontSize: 13, color: Colors.grey[600]),
           labelSmall: TextStyle(fontSize: 11, color: Colors.grey[500], letterSpacing: 0.2),
         ),
         inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+          fillColor: const Color(0xFFFAFAFA),
+          contentPadding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+          ),
           focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: AppColors.primary),
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
-            elevation: 1,
-            shadowColor: Colors.black.withOpacity(0.15),
+            elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
-            padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-            textStyle: TextStyle(fontSize: 16),
+            padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 24),
+            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
         ),
-        // FAB coherente en toda la app (mismo color, forma y elevación)
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        // FAB coherente en toda la app
         floatingActionButtonTheme: FloatingActionButtonThemeData(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         // Transiciones de página fluidas en todas las plataformas
         pageTransitionsTheme: const PageTransitionsTheme(
@@ -396,186 +415,237 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.primaryDark, AppColors.primary],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
+      backgroundColor: Colors.white,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth > 720) {
+            // Desktop: panel de marca izquierda + formulario derecha
+            return Row(
+              children: [
+                Expanded(flex: 4, child: _buildBrandPanel()),
+                Expanded(flex: 6, child: _buildFormContent()),
+              ],
+            );
+          }
+          // Mobile: cabecera compacta + formulario
+          return SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Logo en insignia circular
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 24,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+              child: Column(
+                children: [
+                  _buildMobileHeader(),
+                  _buildFormContent(),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Panel izquierdo (solo desktop) con la identidad de la app
+  Widget _buildBrandPanel() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primaryDark, AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 64),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Hero(
+            tag: 'app-logo',
+            child: Image.asset('assets/logo.png', width: 96, height: 84, fit: BoxFit.contain),
+          ),
+          const SizedBox(height: 28),
+          const Text(
+            'El Perolón',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Gestión de eventos,\nconsumos y gastos del grupo.',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.72),
+              fontSize: 15,
+              height: 1.65,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Cabecera compacta para móvil
+  Widget _buildMobileHeader() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primaryDark, AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+      child: Row(
+        children: [
+          Hero(
+            tag: 'app-logo',
+            child: Image.asset('assets/logo.png', width: 52, height: 46, fit: BoxFit.contain),
+          ),
+          const SizedBox(width: 14),
+          const Text(
+            'El Perolón',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Contenido del formulario (reutilizado en desktop y mobile)
+  Widget _buildFormContent() {
+    return Container(
+      color: Colors.white,
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isLogin ? 'Iniciar sesión' : 'Crear cuenta',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  isLogin
+                      ? 'Introduce tus credenciales para continuar'
+                      : 'Completa los datos para registrarte',
+                  style: TextStyle(fontSize: 13.5, color: Colors.grey[500], height: 1.4),
+                ),
+                const SizedBox(height: 24),
+                _buildSegmentedToggle(),
+                const SizedBox(height: 20),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeInOut,
+                  child: Column(
+                    children: [
+                      if (!isLogin) ...[
+                        _buildTextField(
+                          controller: nameController,
+                          label: "Nombre",
+                          icon: Icons.person_outline,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      _buildTextField(
+                        controller: emailController,
+                        label: "Email",
+                        icon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
                       ),
-                      child: Hero(
-                        tag: 'app-logo',
-                        child: SizedBox(
-                          width: 300,
-                          height: 260,
-                          child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+                      const SizedBox(height: 12),
+                      _buildTextField(
+                        controller: passwordController,
+                        label: "Contraseña",
+                        icon: Icons.lock_outline,
+                        obscure: _obscurePassword,
+                        onSubmitted: (_) => _isLoading
+                            ? null
+                            : (isLogin
+                                ? _signInWithEmailAndPassword()
+                                : _registerWithEmailAndPassword()),
+                        suffix: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            size: 20,
+                            color: Colors.grey[500],
+                          ),
+                          onPressed: () =>
+                              setState(() => _obscurePassword = !_obscurePassword),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Tarjeta con el formulario
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 30,
-                            offset: const Offset(0, 12),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Selector Iniciar sesión / Registrarse
-                          _buildSegmentedToggle(),
-                          const SizedBox(height: 24),
-
-                          AnimatedSize(
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeInOut,
-                            child: Column(
-                              children: [
-                                if (!isLogin) ...[
-                                  _buildTextField(
-                                    controller: nameController,
-                                    label: "Nombre",
-                                    icon: Icons.person_outline,
-                                  ),
-                                  const SizedBox(height: 14),
-                                ],
-                                _buildTextField(
-                                  controller: emailController,
-                                  label: "Email",
-                                  icon: Icons.email_outlined,
-                                  keyboardType: TextInputType.emailAddress,
-                                ),
-                                const SizedBox(height: 14),
-                                _buildTextField(
-                                  controller: passwordController,
-                                  label: "Contraseña",
-                                  icon: Icons.lock_outline,
-                                  obscure: _obscurePassword,
-                                  onSubmitted: (_) => _isLoading
-                                      ? null
-                                      : (isLogin
-                                          ? _signInWithEmailAndPassword()
-                                          : _registerWithEmailAndPassword()),
-                                  suffix: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_outlined
-                                          : Icons.visibility_off_outlined,
-                                      color: Colors.grey,
-                                    ),
-                                    onPressed: () => setState(
-                                        () => _obscurePassword = !_obscurePassword),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Botón principal
-                          SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: ElevatedButton(
-                              onPressed: _isLoading
-                                  ? null
-                                  : (isLogin
-                                      ? _signInWithEmailAndPassword
-                                      : _registerWithEmailAndPassword),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14)),
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      height: 24,
-                                      width: 24,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2.5,
-                                      ),
-                                    )
-                                  : Text(
-                                      isLogin ? "Iniciar sesión" : "Crear cuenta",
-                                      style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                            ),
-                          ),
-
-                          if (showGoogleButton) ...[
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(child: Divider(color: Colors.grey[300])),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text("o",
-                                      style: TextStyle(color: Colors.grey[500])),
-                                ),
-                                Expanded(child: Divider(color: Colors.grey[300])),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 52,
-                              child: OutlinedButton.icon(
-                                icon: const Icon(Icons.login),
-                                label: const Text("Continuar con Google"),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.primary,
-                                  side: BorderSide(color: Colors.grey[300]!),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14)),
-                                ),
-                                onPressed: _isLoading ? null : _signInWithGoogle,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: _isLoading
+                        ? null
+                        : (isLogin
+                            ? _signInWithEmailAndPassword
+                            : _registerWithEmailAndPassword),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2),
+                          )
+                        : Text(isLogin ? "Iniciar sesión" : "Crear cuenta"),
+                  ),
+                ),
+                if (showGoogleButton) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey[200])),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text("o",
+                            style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey[200])),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.login, size: 18),
+                      label: const Text("Continuar con Google"),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: Colors.grey[300]!),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: _isLoading ? null : _signInWithGoogle,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),
@@ -583,14 +653,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Selector animado entre "Iniciar sesión" y "Registrarse".
   Widget _buildSegmentedToggle() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
       ),
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       child: Row(
         children: [
           _buildToggleOption("Iniciar sesión", isLogin),
@@ -605,12 +674,12 @@ class _LoginScreenState extends State<LoginScreen> {
       child: GestureDetector(
         onTap: () => setState(() => isLogin = label == "Iniciar sesión"),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 180),
           curve: Curves.easeInOut,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: selected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
             label,
@@ -618,7 +687,7 @@ class _LoginScreenState extends State<LoginScreen> {
             style: TextStyle(
               color: selected ? Colors.white : Colors.grey[600],
               fontWeight: FontWeight.w600,
-              fontSize: 14,
+              fontSize: 13.5,
             ),
           ),
         ),
@@ -626,7 +695,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Campo de texto con estilo "filled" moderno.
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -641,20 +709,11 @@ class _LoginScreenState extends State<LoginScreen> {
       obscureText: obscure,
       keyboardType: keyboardType,
       onSubmitted: onSubmitted,
+      style: const TextStyle(fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: AppColors.primary),
+        prefixIcon: Icon(icon, size: 20, color: Colors.grey[500]),
         suffixIcon: suffix,
-        filled: true,
-        fillColor: Colors.grey[50],
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey[200]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
-        ),
       ),
     );
   }

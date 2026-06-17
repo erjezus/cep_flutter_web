@@ -76,28 +76,29 @@ class _EditLunchScreenState extends State<EditLunchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mainColor = AppColors.primary;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Editar Almuerzo')),
+      appBar: AppBar(title: const Text('Editar almuerzo')),
       body: ResponsiveContainer(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextFormField(
                   readOnly: true,
                   decoration: InputDecoration(
                     labelText: 'Fecha',
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.calendar_today),
+                      icon: const Icon(Icons.calendar_today, size: 20),
                       onPressed: _pickDate,
                     ),
                   ),
-                  controller: TextEditingController(text: _selectedDate.toLocal().toString().split(' ')[0]),
-                  validator: (v) => v == null || v.isEmpty ? 'Fecha requerida' : null,
+                  controller: TextEditingController(
+                      text: _selectedDate.toLocal().toString().split(' ')[0]),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Fecha requerida' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -106,10 +107,19 @@ class _EditLunchScreenState extends State<EditLunchScreen> {
                   maxLines: 3,
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: mainColor, padding: const EdgeInsets.symmetric(vertical: 14)),
-                  onPressed: _isSubmitting ? null : _submit,
-                  child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Actualizar Almuerzo'),
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submit,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text('Actualizar almuerzo'),
+                  ),
                 ),
               ],
             ),

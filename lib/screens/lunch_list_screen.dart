@@ -41,18 +41,26 @@ class _LunchListScreenState extends State<LunchListScreen> {
   }
 
   Future<void> fetchLunches() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
     final url = Uri.parse('$baseUrl/api/lunches?event_id=${widget.eventId}');
-    final res = await http.get(url);
-    if (res.statusCode == 200) {
-      final body = jsonDecode(utf8.decode(res.bodyBytes));
-      setState(() {
-        lunches = body is List ? body : [];
-      });
-    } else {
-      AppSnackBar.error(context, 'Error al cargar almuerzos');
+    try {
+      final res = await http.get(url);
+      if (!mounted) return;
+      if (res.statusCode == 200) {
+        final body = jsonDecode(utf8.decode(res.bodyBytes));
+        setState(() {
+          lunches = body is List ? body : [];
+        });
+      } else {
+        AppSnackBar.error(context, 'Error al cargar almuerzos');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Error de red al cargar almuerzos');
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
-    setState(() => isLoading = false);
   }
 
   Future<int> fetchParticipantCount(int lunchId) async {
@@ -124,9 +132,7 @@ class _LunchListScreenState extends State<LunchListScreen> {
           ),
         ],
       ),
-      body: Container(
-        color: Colors.white,
-        child: ResponsiveContainer(
+      body: ResponsiveContainer(
           maxWidth: 1000,
           child: isLoading
               ? const SkeletonList(itemCount: 5)
@@ -155,16 +161,21 @@ class _LunchListScreenState extends State<LunchListScreen> {
                                     ? '${snapshot.data} comensales'
                                     : 'Cargando...';
                                 return StandardCard(
-                                  margin: const EdgeInsets.symmetric(vertical: 8),
-                                  padding: const EdgeInsets.all(12),
+                                  margin: const EdgeInsets.symmetric(vertical: 6),
+                                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
                                   child: ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundColor: AppColors.lunch.withOpacity(0.12),
-                                      child: Icon(Icons.lunch_dining, color: AppColors.lunch),
+                                    leading: Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.lunch.withOpacity(0.10),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(Icons.lunch_dining, color: AppColors.lunch, size: 20),
                                     ),
                                     title: Text(
                                       desc,
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                      style: const TextStyle(fontWeight: FontWeight.w600),
                                     ),
                                     subtitle: Row(
                                       children: [
@@ -176,7 +187,7 @@ class _LunchListScreenState extends State<LunchListScreen> {
                                             child: Text(
                                               dateStr,
                                               overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(color: Colors.grey[600]),
+                                              style: TextStyle(color: Colors.grey[600], fontSize: 12),
                                             ),
                                           ),
                                           const SizedBox(width: 10),
@@ -187,29 +198,23 @@ class _LunchListScreenState extends State<LunchListScreen> {
                                           child: Text(
                                             comensales,
                                             overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(color: Colors.grey[600]),
+                                            style: TextStyle(color: Colors.grey[600], fontSize: 12),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.receipt_long),
-                                          tooltip: 'Gastos',
-                                          onPressed: () => _navigateToLunchExpenses(lunch['id']),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.group),
-                                          tooltip: 'Comensales',
-                                          onPressed: () => _navigateToParticipants(lunch['id']),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.edit),
-                                          tooltip: 'Editar',
-                                          onPressed: () => _navigateToEdit(lunch),
-                                        ),
+                                    trailing: PopupMenuButton<String>(
+                                      icon: Icon(Icons.more_vert, color: Colors.grey[600]),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      onSelected: (value) {
+                                        if (value == 'gastos') _navigateToLunchExpenses(lunch['id']);
+                                        if (value == 'comensales') _navigateToParticipants(lunch['id']);
+                                        if (value == 'editar') _navigateToEdit(lunch);
+                                      },
+                                      itemBuilder: (_) => const [
+                                        PopupMenuItem(value: 'comensales', child: ListTile(leading: Icon(Icons.group, size: 18), title: Text('Comensales'), dense: true)),
+                                        PopupMenuItem(value: 'gastos', child: ListTile(leading: Icon(Icons.receipt_long, size: 18), title: Text('Gastos'), dense: true)),
+                                        PopupMenuItem(value: 'editar', child: ListTile(leading: Icon(Icons.edit, size: 18), title: Text('Editar'), dense: true)),
                                       ],
                                     ),
                                     onTap: () => _navigateToParticipants(lunch['id']),
@@ -221,7 +226,6 @@ class _LunchListScreenState extends State<LunchListScreen> {
                         ),
                       ],
                     ),
-        ),
       ),
     );
   }

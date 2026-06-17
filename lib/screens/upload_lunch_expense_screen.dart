@@ -43,19 +43,12 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: source);
-
     if (picked != null) {
       if (kIsWeb) {
         final bytes = await picked.readAsBytes();
-        setState(() {
-          _webImageBytes = bytes;
-          _selectedImage = null;
-        });
+        setState(() { _webImageBytes = bytes; _selectedImage = null; });
       } else {
-        setState(() {
-          _selectedImage = File(picked.path);
-          _webImageBytes = null;
-        });
+        setState(() { _selectedImage = File(picked.path); _webImageBytes = null; });
       }
     }
   }
@@ -63,45 +56,36 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
   void _showImageSourceSelector() {
     showModalBottomSheet(
       context: context,
-      builder: (_) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              if (!kIsWeb)
-                ListTile(
-                  leading: const Icon(Icons.camera_alt),
-                  title: const Text('Tomar foto'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await _pickImage(ImageSource.camera);
-                  },
-                ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (_) => SafeArea(
+        child: Wrap(
+          children: [
+            if (!kIsWeb)
               ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: Text(kIsWeb ? 'Seleccionar archivo' : 'Seleccionar de galería'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _pickImage(ImageSource.gallery);
-                },
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Tomar foto'),
+                onTap: () async { Navigator.pop(context); await _pickImage(ImageSource.camera); },
               ),
-            ],
-          ),
-        );
-      },
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: Text(kIsWeb ? 'Seleccionar archivo' : 'Seleccionar de galería'),
+              onTap: () async { Navigator.pop(context); await _pickImage(ImageSource.gallery); },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Future<void> _submitExpense() async {
-    if (!_formKey.currentState!.validate()) {
-      debugPrint("⚠️ Formulario no válido");
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSubmitting = true);
-    debugPrint("📤 Enviando gasto a $baseUrl/api/expenses");
 
-    final uri = Uri.parse("$baseUrl/api/expenses");
-    final request = http.MultipartRequest("POST", uri)
+    final uri = Uri.parse('$baseUrl/api/expenses');
+    final request = http.MultipartRequest('POST', uri)
       ..fields['user_id'] = widget.userId.toString()
       ..fields['event_id'] = widget.eventId.toString()
       ..fields['concept'] = _conceptController.text
@@ -112,8 +96,7 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
 
     if (kIsWeb && _webImageBytes != null) {
       request.files.add(http.MultipartFile.fromBytes(
-        'image',
-        _webImageBytes!,
+        'image', _webImageBytes!,
         filename: 'upload.png',
         contentType: MediaType('image', 'png'),
       ));
@@ -122,40 +105,24 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
     }
 
     final res = await request.send();
-    debugPrint("📬 Respuesta al crear gasto: ${res.statusCode}");
 
     if (res.statusCode == 200) {
       final responseBody = await http.Response.fromStream(res);
       final decoded = jsonDecode(responseBody.body);
       final expenseId = decoded['id'];
-      debugPrint("🆔 ID del gasto creado: $expenseId");
 
       if (expenseId != null) {
-        final payload = {
-          "expense_id": expenseId,
-          "lunch_id": widget.lunchId,
-          "user_id": widget.userId,
-        };
-
-        debugPrint("🔗 Enviando asociación a /api/expense_lunch con payload: $payload");
-
-        final linkRes = await http.post(
-          Uri.parse("$baseUrl/api/expense_lunch"),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode(payload),
+        await http.post(
+          Uri.parse('$baseUrl/api/expense_lunch'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'expense_id': expenseId, 'lunch_id': widget.lunchId, 'user_id': widget.userId}),
         );
-
-        if (linkRes.statusCode == 201 || linkRes.statusCode == 200) {
-          debugPrint("✅ Gasto enlazado al almuerzo correctamente");
-        } else {
-          AppSnackBar.error(context, "Error al enlazar gasto con almuerzo");
-        }
       }
 
       if (mounted) Navigator.pop(context, true);
     } else {
       setState(() => _isSubmitting = false);
-      AppSnackBar.error(context, "Error al subir el gasto");
+      AppSnackBar.error(context, 'Error al subir el gasto');
     }
   }
 
@@ -164,10 +131,7 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
     final mainColor = AppColors.primary;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text("Nuevo gasto"),
-      ),
+      appBar: AppBar(title: const Text('Nuevo gasto de almuerzo')),
       body: ResponsiveContainer(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -176,70 +140,80 @@ class _UploadLunchExpenseScreenState extends State<UploadLunchExpenseScreen> {
             child: ListView(
               children: [
                 StandardCard(
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _conceptController,
-                      decoration: const InputDecoration(labelText: 'Concepto'),
-                      validator: (value) => value!.isEmpty ? 'Este campo es obligatorio' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'Cantidad (€)'),
-                      validator: (value) => value!.isEmpty ? 'Este campo es obligatorio' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(labelText: 'Observaciones (opcional)'),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile(
-                      title: const Text('¿Pagado?'),
-                      value: _paid,
-                      onChanged: (val) => setState(() => _paid = val),
-                      activeColor: mainColor,
-                    ),
-                    TextButton.icon(
-                      onPressed: _isSubmitting ? null : _showImageSourceSelector,
-                      icon: Icon(Icons.attach_file, color: mainColor),
-                      label: Text("Seleccionar imagen (opcional)", style: TextStyle(color: mainColor)),
-                    ),
-                    if (_selectedImage != null || _webImageBytes != null)
-                      Container(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        height: 150,
-                        child: kIsWeb
-                            ? Image.memory(_webImageBytes!, fit: BoxFit.cover)
-                            : Image.file(_selectedImage!, fit: BoxFit.cover),
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _conceptController,
+                        decoration: const InputDecoration(labelText: 'Concepto'),
+                        validator: (v) => v!.isEmpty ? 'Este campo es obligatorio' : null,
                       ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submitExpense,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: mainColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _amountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(labelText: 'Cantidad (€)'),
+                        validator: (v) => v!.isEmpty ? 'Este campo es obligatorio' : null,
                       ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _notesController,
+                        decoration: const InputDecoration(labelText: 'Observaciones (opcional)'),
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        value: _paid,
+                        onChanged: (v) => setState(() => _paid = v),
+                        title: const Text('¿Pagado?'),
+                        activeColor: mainColor,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                      const SizedBox(height: 4),
+                      OutlinedButton.icon(
+                        onPressed: _isSubmitting ? null : _showImageSourceSelector,
+                        icon: Icon(Icons.attach_file, size: 18, color: mainColor),
+                        label: Text(
+                          _selectedImage == null && _webImageBytes == null
+                              ? 'Adjuntar imagen (opcional)'
+                              : 'Imagen seleccionada ✓',
+                          style: TextStyle(color: mainColor),
                         ),
-                      )
-                          : const Text("Guardar gasto"),
-                    ),
-                  ],
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: mainColor.withOpacity(0.4)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                      if (_selectedImage != null || _webImageBytes != null)
+                        Container(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          height: 140,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
+                          child: kIsWeb
+                              ? Image.memory(_webImageBytes!, fit: BoxFit.cover, width: double.infinity)
+                              : Image.file(_selectedImage!, fit: BoxFit.cover, width: double.infinity),
+                        ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: _isSubmitting ? null : _submitExpense,
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  height: 20, width: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Text('Guardar gasto'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );

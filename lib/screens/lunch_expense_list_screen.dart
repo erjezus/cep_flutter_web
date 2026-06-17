@@ -38,10 +38,12 @@ class _LunchExpenseListScreenState extends State<LunchExpenseListScreen> {
   }
 
   Future<void> fetchExpenses() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
     try {
       final url = Uri.parse('$baseUrl/api/lunches/expenses?lunchId=${widget.lunchId}');
       final res = await http.get(url);
+      if (!mounted) return;
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
         setState(() {
@@ -51,9 +53,10 @@ class _LunchExpenseListScreenState extends State<LunchExpenseListScreen> {
         AppSnackBar.error(context, 'Error al cargar gastos');
       }
     } catch (e) {
+      if (!mounted) return;
       AppSnackBar.error(context, 'Error de red o de formato');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 

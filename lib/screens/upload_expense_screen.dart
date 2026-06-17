@@ -142,9 +142,8 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
     final mainColor = AppColors.primary;
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Nuevo gasto"),
+        title: const Text("Añadir gasto"),
       ),
       body: ResponsiveContainer(
         child: Padding(
@@ -190,40 +189,52 @@ class _UploadExpenseScreenState extends State<UploadExpenseScreen> {
                       onChanged: (value) => setState(() => _isPaid = value),
                       title: const Text("¿Pagado?"),
                       activeColor: mainColor,
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
                     ),
-                    TextButton.icon(
+                    const SizedBox(height: 4),
+                    OutlinedButton.icon(
                       onPressed: _isSubmitting ? null : _showImageSourceSelector,
-                      icon: Icon(Icons.attach_file, color: mainColor),
+                      icon: Icon(Icons.attach_file, size: 18, color: mainColor),
                       label: Text(
-                        "Seleccionar imagen (opcional)",
+                        _selectedImage == null && _webImageBytes == null
+                            ? "Adjuntar imagen (opcional)"
+                            : "Imagen seleccionada ✓",
                         style: TextStyle(color: mainColor),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: mainColor.withOpacity(0.4)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                     if (_selectedImage != null || _webImageBytes != null)
                       Container(
                         margin: const EdgeInsets.symmetric(vertical: 8),
-                        height: 150,
+                        height: 140,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
                         child: kIsWeb
-                            ? Image.memory(_webImageBytes!, fit: BoxFit.cover)
-                            : Image.file(_selectedImage!, fit: BoxFit.cover),
+                            ? Image.memory(_webImageBytes!, fit: BoxFit.cover, width: double.infinity)
+                            : Image.file(_selectedImage!, fit: BoxFit.cover, width: double.infinity),
                       ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submitExpense,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: mainColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting ? null : _submitExpense,
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text("Guardar gasto"),
                       ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                          : const Text("Guardar gasto"),
                     ),
                   ],
                 ),

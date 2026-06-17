@@ -43,6 +43,7 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
   }
 
   Future<void> fetchData() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
 
     try {
@@ -55,6 +56,8 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
       final lunchCostsRes = await http.get(Uri.parse('$baseUrl/api/summary/lunch-costs?eventId=${widget.eventId}&userId=${widget.userId}'));
       final depositRes = await http.get(Uri.parse('$baseUrl/api/summary/deposit?eventId=${widget.eventId}&userId=${widget.userId}'));
       final paidExpensesRes = await http.get(Uri.parse('$baseUrl/api/summary/paid?eventId=${widget.eventId}&userId=${widget.userId}'));
+
+      if (!mounted) return;
 
       if (foodRes.statusCode == 200 &&
           drinkRes.statusCode == 200 &&
@@ -99,9 +102,10 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
         throw Exception("Error al cargar los datos");
       }
     } catch (e) {
+      if (!mounted) return;
       AppSnackBar.error(context, "Error: ${e.toString()}");
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -152,33 +156,32 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
 
   Widget buildSection(String title, List<Widget> content, {IconData? icon, bool initiallyExpanded = false}) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           child: ExpansionTile(
             initiallyExpanded: initiallyExpanded,
             tilePadding: const EdgeInsets.symmetric(horizontal: 16),
             childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             leading: icon != null
-                ? CircleAvatar(
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
-                    child: Icon(icon, color: AppColors.primary, size: 20),
+                ? Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, color: AppColors.primary, size: 18),
                   )
                 : null,
-            title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             children: content,
           ),
         ),
@@ -192,38 +195,32 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
     final Color heroColor = debe ? AppColors.negative : AppColors.positive;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         gradient: LinearGradient(
-          colors: [heroColor.withOpacity(0.9), heroColor],
+          colors: [heroColor.withOpacity(0.85), heroColor],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: heroColor.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         children: [
-          Icon(debe ? Icons.account_balance_wallet : Icons.celebration,
-              color: Colors.white, size: 32),
-          const SizedBox(height: 8),
+          Icon(debe ? Icons.account_balance_wallet_outlined : Icons.check_circle_outline,
+              color: Colors.white70, size: 26),
+          const SizedBox(height: 6),
           Text(
-            debe ? "Te toca poner" : "Te sobra",
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            debe ? "Importe a poner" : "Te sobra",
+            style: const TextStyle(color: Colors.white70, fontSize: 13, letterSpacing: 0.2),
           ),
           const SizedBox(height: 4),
           AnimatedCount(
             value: totalFinal.abs(),
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 38,
-              fontWeight: FontWeight.bold,
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
             ),
           ),
         ],
@@ -244,7 +241,7 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Resumen de gastos'),
+        title: const Text('Resumen total'),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

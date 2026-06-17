@@ -29,10 +29,13 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
   }
 
   Future<void> registerIfNeeded() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
     final userId = widget.userId;
     final urlCheck = Uri.parse('$baseUrl/api/lunch_participants?lunch_id=${widget.lunchId}');
     final resCheck = await http.get(urlCheck);
+
+    if (!mounted) return;
 
     if (resCheck.statusCode == 200) {
       final data = jsonDecode(utf8.decode(resCheck.bodyBytes));
@@ -46,7 +49,7 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'lunch_id': widget.lunchId, 'user_id': userId, 'num_people': 1}),
         );
-
+        if (!mounted) return;
         if (resPost.statusCode != 201 && resPost.statusCode != 200) {
           AppSnackBar.error(context, 'Error al registrarte en el almuerzo');
         }
@@ -54,15 +57,16 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
 
       await fetchParticipants();
     } else {
+      if (!mounted) return;
       AppSnackBar.error(context, 'Error al comprobar participantes');
       setState(() => isLoading = false);
     }
   }
 
-
   Future<void> fetchParticipants() async {
     final url = Uri.parse('$baseUrl/api/lunch_participants?lunch_id=${widget.lunchId}');
     final res = await http.get(url);
+    if (!mounted) return;
     if (res.statusCode == 200) {
       setState(() {
         participants = jsonDecode(utf8.decode(res.bodyBytes));
@@ -93,7 +97,6 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Participantes del almuerzo'),
       ),
@@ -111,20 +114,27 @@ class _LunchParticipantsScreenState extends State<LunchParticipantsScreen> {
                     itemCount: participants.length + 1,
                     itemBuilder: (context, index) {
                       if (index == participants.length) {
-                        return StandardCard(
-                          margin: const EdgeInsets.only(top: 16),
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            'Total de comensales: $totalComensales',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                        );
+                      return StandardCard(
+                        margin: const EdgeInsets.only(top: 16),
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Total de comensales: $totalComensales',
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
                       }
 
                       final p = participants[index];
                       return StandardCard(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        margin: const EdgeInsets.symmetric(vertical: 6),
                         child: Row(
                           children: [
                             Expanded(

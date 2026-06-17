@@ -47,26 +47,31 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
   }
 
   void fetchConsumptions() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
 
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/consumptions?userId=${widget.userId}&eventId=${widget.eventId}'),
       );
-
+      if (!mounted) return;
       if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        setState(() {
-          consumptionsByDay = data;
-          computeSummary(data);
-        });
+          final data = jsonDecode(utf8.decode(response.bodyBytes));
+          // Ordenar días de más reciente a más antiguo
+          final sorted = List.from(data)
+            ..sort((a, b) => DateTime.parse(b['date']).compareTo(DateTime.parse(a['date'])));
+          setState(() {
+            consumptionsByDay = sorted;
+            computeSummary(sorted);
+          });
       } else {
         _showError("Error al cargar consumiciones");
       }
     } catch (e) {
+      if (!mounted) return;
       _showError("Error de red al cargar consumiciones");
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -113,11 +118,12 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
   }
 
   void _deleteConsumption(int id) async {
+    if (!mounted) return;
     setState(() => isLoading = true);
 
     try {
       final response = await http.delete(Uri.parse('$baseUrl/api/consumptions/$id'));
-
+      if (!mounted) return;
       if (response.statusCode >= 200 && response.statusCode < 300) {
         _showSuccess("Consumición eliminada");
         fetchConsumptions();
@@ -125,9 +131,10 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
         throw Exception("Error al eliminar");
       }
     } catch (e) {
+      if (!mounted) return;
       _showError("Error al eliminar consumición");
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -238,7 +245,6 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
     final Color mainColor = AppColors.primary;
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Mis consumiciones"),
         actions: [

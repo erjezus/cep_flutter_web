@@ -48,7 +48,6 @@ class _SummaryScreenState extends State<SummaryScreen> {
     final Color mainColor = AppColors.primary;
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Resumen del día"),
       ),

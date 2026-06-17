@@ -417,9 +417,8 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     final mainColor = AppColors.primary;
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Hoja de gastos"),
+        title: const Text("Ver gastos"),
       ),
       body: ResponsiveContainer(
         child: Column(
