@@ -22,7 +22,7 @@ jobs:
         run: flutter pub get
 
       - name: Build web with dart-define
-        run: flutter build web --release --dart-define=BASE_URL=https://cep-backend-039e.onrender.com
+        run: flutter build web --release --base-href /cep_flutter_web/ --dart-define=BASE_URL=https://cep-backend-039e.onrender.com
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
