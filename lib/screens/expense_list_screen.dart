@@ -452,7 +452,9 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                       title: "No hay gastos registrados",
                       message: "Los gastos que se añadan aparecerán agrupados por tipo aquí.",
                     )
-                  : ListView(
+                  : RefreshIndicator(
+                      onRefresh: () async => fetchExpenses(),
+                      child: ListView(
                       children: [
                         for (var type in fixedTypeOrder)
                           if (expensesByType.containsKey(type))
@@ -473,6 +475,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                               mainColor,
                             ),
                       ],
+                    ),
                     ),
             ),
           ],

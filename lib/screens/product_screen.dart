@@ -28,8 +28,40 @@ class ProductScreen extends StatefulWidget {
 class _ProductScreenState extends State<ProductScreen> {
   Map<String, List> groupedProducts = {};
   final Map<int, int> _sessionCounts = {};
+  final Set<int> _pendingProducts = {};
   bool _isLoading = true;
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
   final baseUrl = AppConfig.baseUrl;
+
+  // ── Caché estático por eventId (se comparte entre instancias) ────────────
+  static final Map<int, Map<String, List>> _cache = {};
+  static final Map<int, DateTime> _cacheTime = {};
+  static const _cacheDuration = Duration(minutes: 10);
+
+  // ── Helpers de sesión ────────────────────────────────────────────────────
+  List<dynamic> get _allProducts =>
+      groupedProducts.values.expand((l) => l).toList();
+
+  int get _totalSessionItems =>
+      _sessionCounts.values.fold(0, (s, c) => s + c);
+
+  double get _totalSessionCost {
+    double total = 0;
+    for (final entry in _sessionCounts.entries) {
+      if (entry.value == 0) continue;
+      final p = _allProducts.firstWhere(
+        (p) => p['id'] == entry.key,
+        orElse: () => null,
+      );
+      if (p != null) {
+        total += (double.tryParse('${p['unit_price']}') ?? 0) * entry.value;
+      }
+    }
+    return total;
+  }
+
+  bool get _hasSession => _totalSessionItems > 0;
 
   @override
   void initState() {
@@ -37,7 +69,28 @@ class _ProductScreenState extends State<ProductScreen> {
     _fetchGroupedProducts();
   }
 
-  Future<void> _fetchGroupedProducts() async {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchGroupedProducts({bool forceRefresh = false}) async {
+    final id = widget.eventId;
+    final cached = _cache[id];
+    final age = _cacheTime[id];
+    final isFresh =
+        age != null && DateTime.now().difference(age) < _cacheDuration;
+
+    if (!forceRefresh && cached != null && isFresh) {
+      if (!mounted) return;
+      setState(() {
+        groupedProducts = cached;
+        _isLoading = false;
+      });
+      return;
+    }
+
     try {
       final response =
           await http.get(Uri.parse('$baseUrl/api/products/grouped'));
@@ -49,6 +102,8 @@ class _ProductScreenState extends State<ProductScreen> {
         for (var item in data) {
           grouped[item['typology']] = item['products'];
         }
+        _cache[id] = grouped;
+        _cacheTime[id] = DateTime.now();
         setState(() {
           groupedProducts = grouped;
           _isLoading = false;
@@ -62,10 +117,38 @@ class _ProductScreenState extends State<ProductScreen> {
     }
   }
 
+  // ── Confirmación al salir si hay sesión ──────────────────────────────────
+  Future<bool> _confirmExit() async {
+    if (!_hasSession) return true;
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('¿Salir de Consumir?'),
+        content: Text(
+          'Llevas $_totalSessionItems consumición${_totalSessionItems == 1 ? '' : 'es'} '
+          'esta sesión (€${_totalSessionCost.toStringAsFixed(2)}).\n\n'
+          'Están guardadas en el servidor, no se perderán.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Quedarme')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Salir')),
+        ],
+      ),
+    );
+    return leave ?? false;
+  }
+
   Future<void> _quickAdd(int productId, String productName) async {
     HapticFeedback.lightImpact();
     setState(() {
       _sessionCounts[productId] = (_sessionCounts[productId] ?? 0) + 1;
+      _pendingProducts.add(productId);
     });
     try {
       final res = await http.post(
@@ -93,6 +176,8 @@ class _ProductScreenState extends State<ProductScreen> {
             ((_sessionCounts[productId] ?? 1) - 1).clamp(0, 999);
       });
       AppSnackBar.error(context, 'Error de red');
+    } finally {
+      if (mounted) setState(() => _pendingProducts.remove(productId));
     }
   }
 
@@ -103,9 +188,11 @@ class _ProductScreenState extends State<ProductScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(productName,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            style:
+                const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -177,6 +264,7 @@ class _ProductScreenState extends State<ProductScreen> {
     setState(() {
       _sessionCounts[productId] =
           (_sessionCounts[productId] ?? 0) + quantity;
+      _pendingProducts.add(productId);
     });
     try {
       final res = await http.post(
@@ -203,89 +291,189 @@ class _ProductScreenState extends State<ProductScreen> {
     } catch (_) {
       if (!mounted) return;
       AppSnackBar.error(context, 'Error de red');
+    } finally {
+      if (mounted) setState(() => _pendingProducts.remove(productId));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Consumir')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : groupedProducts.isEmpty
-              ? const EmptyState(
-                  icon: Icons.fastfood,
-                  title: 'No hay productos disponibles',
-                  message:
-                      'Cuando haya productos podrás registrar tus consumiciones.',
-                )
-              : Column(
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      color: AppColors.primary.withOpacity(0.06),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 7),
-                      child: Row(
-                        children: [
-                          Icon(Icons.touch_app,
-                              size: 14, color: Colors.grey[500]),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Toca para añadir 1 · mantén pulsado para más cantidad',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[500]),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: ResponsiveContainer(
-                        child: ListView(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                          children: (groupedProducts.entries.toList()
-                            ..sort((a, b) {
-                              int _priority(String key) {
-                                final k = key.toLowerCase();
-                                if (k.contains('bebida')) return 0;
-                                if (k.contains('comida')) return 1;
-                                return 2;
-                              }
-                              return _priority(a.key).compareTo(_priority(b.key));
-                            })).map((entry) {
-                            return _buildCategory(entry.key, entry.value);
-                          }).toList(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final canLeave = await _confirmExit();
+        if (canLeave && mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Consumir')),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : groupedProducts.isEmpty
+                ? const EmptyState(
+                    icon: Icons.fastfood,
+                    title: 'No hay productos disponibles',
+                    message:
+                        'Cuando haya productos podrás registrar tus consumiciones.',
+                  )
+                : Column(
+                    children: [
+                      // ── Barra de hint + búsqueda ────────────────────────
+                      Container(
+                        color: AppColors.primary.withOpacity(0.06),
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.touch_app,
+                                    size: 13, color: Colors.grey[500]),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Toca para añadir 1 · mantén para más',
+                                  style: TextStyle(
+                                      fontSize: 11, color: Colors.grey[500]),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _searchController,
+                              onChanged: (v) =>
+                                  setState(() => _searchQuery = v.trim().toLowerCase()),
+                              decoration: InputDecoration(
+                                hintText: 'Buscar producto…',
+                                hintStyle:
+                                    TextStyle(fontSize: 14, color: Colors.grey[400]),
+                                prefixIcon: const Icon(Icons.search, size: 20),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.close, size: 18),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() => _searchQuery = '');
+                                        },
+                                      )
+                                    : null,
+                                isDense: true,
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide:
+                                      const BorderSide(color: Color(0xFFEEEEEE)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide:
+                                      const BorderSide(color: Color(0xFFEEEEEE)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      // ── Resumen de sesión ───────────────────────────────
+                      if (_hasSession)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          color: AppColors.primary.withOpacity(0.09),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 9),
+                          child: Row(
+                            children: [
+                              Icon(Icons.shopping_basket_rounded,
+                                  size: 16, color: AppColors.primary),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Esta sesión: $_totalSessionItems consumición${_totalSessionItems == 1 ? '' : 'es'}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '€${_totalSessionCost.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      // ── Lista de productos ──────────────────────────────
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: () =>
+                              _fetchGroupedProducts(forceRefresh: true),
+                          child: ResponsiveContainer(
+                            child: ListView(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                              children: (groupedProducts.entries.toList()
+                                    ..sort((a, b) {
+                                      int _priority(String key) {
+                                        final k = key.toLowerCase();
+                                        if (k.contains('bebida')) return 0;
+                                        if (k.contains('comida')) return 1;
+                                        return 2;
+                                      }
+                                      return _priority(a.key)
+                                          .compareTo(_priority(b.key));
+                                    }))
+                                  .map((entry) => _buildCategory(
+                                      entry.key, entry.value))
+                                  .where((w) => w != null)
+                                  .cast<Widget>()
+                                  .toList(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ConsumptionScreen(
+                  userId: widget.userId,
+                  userName: widget.userName,
+                  eventId: widget.eventId,
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ConsumptionScreen(
-                userId: widget.userId,
-                userName: widget.userName,
-                eventId: widget.eventId,
               ),
-            ),
-          );
-          if (mounted) {
-            setState(() => _sessionCounts.clear());
-          }
-        },
-        icon: const Icon(Icons.receipt_long),
-        label: const Text('Mis consumiciones',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+            );
+            if (mounted) setState(() => _sessionCounts.clear());
+          },
+          icon: const Icon(Icons.receipt_long),
+          label: const Text('Mis consumiciones',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  Widget _buildCategory(String typology, List products) {
+  Widget? _buildCategory(String typology, List products) {
+    // Filtrar por búsqueda
+    final filtered = _searchQuery.isEmpty
+        ? products
+        : products
+            .where((p) =>
+                (p['name'] as String)
+                    .toLowerCase()
+                    .contains(_searchQuery))
+            .toList();
+
+    if (filtered.isEmpty) return null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -310,15 +498,17 @@ class _ProductScreenState extends State<ProductScreen> {
           clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
-              for (int i = 0; i < products.length; i++) ...[
+              for (int i = 0; i < filtered.length; i++) ...[
                 _ProductRow(
-                  product: products[i],
-                  sessionCount: _sessionCounts[products[i]['id']] ?? 0,
-                  onTap: () => _quickAdd(products[i]['id'], products[i]['name']),
+                  product: filtered[i],
+                  sessionCount: _sessionCounts[filtered[i]['id']] ?? 0,
+                  isPending: _pendingProducts.contains(filtered[i]['id']),
+                  onTap: () =>
+                      _quickAdd(filtered[i]['id'], filtered[i]['name']),
                   onLongPress: () => _showQuantityDialog(
-                      products[i]['id'], products[i]['name']),
+                      filtered[i]['id'], filtered[i]['name']),
                 ),
-                if (i < products.length - 1)
+                if (i < filtered.length - 1)
                   const Divider(height: 1, indent: 16, endIndent: 0),
               ],
             ],
@@ -334,12 +524,14 @@ class _ProductScreenState extends State<ProductScreen> {
 class _ProductRow extends StatefulWidget {
   final dynamic product;
   final int sessionCount;
+  final bool isPending;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
   const _ProductRow({
     required this.product,
     required this.sessionCount,
+    required this.isPending,
     required this.onTap,
     required this.onLongPress,
   });
@@ -394,7 +586,6 @@ class _ProductRowState extends State<_ProductRow>
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
             child: Row(
               children: [
-                // Nombre y precio
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -412,44 +603,55 @@ class _ProductRowState extends State<_ProductRow>
                       const SizedBox(height: 2),
                       Text(
                         '€${p['unit_price']}',
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.grey[500]),
+                        style:
+                            TextStyle(fontSize: 13, color: Colors.grey[500]),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Badge o icono de añadir
+                // Badge / spinner / icono añadir
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   transitionBuilder: (child, anim) =>
                       ScaleTransition(scale: anim, child: child),
-                  child: hasCount
-                      ? Container(
-                          key: ValueKey('badge_$count'),
-                          constraints: const BoxConstraints(minWidth: 32),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
+                  child: widget.isPending
+                      ? SizedBox(
+                          key: const ValueKey('spinner'),
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
                             color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '$count',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                            ),
                           ),
                         )
-                      : Icon(
-                          key: const ValueKey('add_icon'),
-                          Icons.add_circle_outline,
-                          color: Colors.grey[400],
-                          size: 22,
-                        ),
+                      : hasCount
+                          ? Container(
+                              key: ValueKey('badge_$count'),
+                              constraints:
+                                  const BoxConstraints(minWidth: 32),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '$count',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              key: const ValueKey('add_icon'),
+                              Icons.add_circle_outline,
+                              color: Colors.grey[400],
+                              size: 22,
+                            ),
                 ),
               ],
             ),

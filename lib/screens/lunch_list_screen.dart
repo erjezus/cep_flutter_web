@@ -63,21 +63,46 @@ class _LunchListScreenState extends State<LunchListScreen> {
     }
   }
 
-  Future<int> fetchParticipantCount(int lunchId) async {
-    final res = await http.get(
-      Uri.parse('$baseUrl/api/lunch_participants?lunch_id=$lunchId'),
-    );
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      if (data is List) {
-        int total = 0;
-        for (final p in data) {
-          total += (p['num_people'] ?? 1) as int;
+  Future<Map<String, dynamic>> fetchLunchSummary(int lunchId) async {
+    int participants = 0;
+    double totalCost = 0;
+
+    try {
+      final pRes = await http.get(
+        Uri.parse('$baseUrl/api/lunch_participants?lunch_id=$lunchId'),
+      );
+      if (pRes.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(pRes.bodyBytes));
+        if (data is List) {
+          for (final p in data) {
+            participants += (p['num_people'] ?? 1) as int;
+          }
         }
-        return total;
       }
-    }
-    return 0;
+    } catch (_) {}
+
+    try {
+      final eRes = await http.get(
+        Uri.parse('$baseUrl/api/lunches/expenses?lunchId=$lunchId'),
+      );
+      if (eRes.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(eRes.bodyBytes));
+        if (data is List) {
+          for (final e in data) {
+            totalCost += (double.tryParse('${e['amount']}') ?? 0);
+          }
+        }
+      }
+    } catch (_) {}
+
+    final costPerPerson =
+        participants > 0 ? totalCost / participants : 0.0;
+
+    return {
+      'participants': participants,
+      'totalCost': totalCost,
+      'costPerPerson': costPerPerson,
+    };
   }
 
   void _navigateToCreate() async {
@@ -154,12 +179,17 @@ class _LunchListScreenState extends State<LunchListScreen> {
                             final dateStr = lunch['date'] != null
                                 ? DateFormat('dd/MM/yyyy').format(DateTime.parse(lunch['date']))
                                 : null;
-                            return FutureBuilder<int>(
-                              future: fetchParticipantCount(lunch['id']),
+                            return FutureBuilder<Map<String, dynamic>>(
+                              future: fetchLunchSummary(lunch['id']),
                               builder: (context, snapshot) {
-                                final comensales = snapshot.hasData
-                                    ? '${snapshot.data} comensales'
-                                    : 'Cargando...';
+                                final participants = snapshot.data?['participants'] as int? ?? 0;
+                                final totalCost = snapshot.data?['totalCost'] as double? ?? 0;
+                                final costPerPerson = snapshot.data?['costPerPerson'] as double? ?? 0;
+                                final isLoaded = snapshot.hasData;
+
+                                final comensalesText = isLoaded
+                                    ? '$participants comensal${participants == 1 ? '' : 'es'}'
+                                    : '…';
                                 return StandardCard(
                                   margin: const EdgeInsets.symmetric(vertical: 6),
                                   padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
@@ -177,30 +207,52 @@ class _LunchListScreenState extends State<LunchListScreen> {
                                       desc,
                                       style: const TextStyle(fontWeight: FontWeight.w600),
                                     ),
-                                    subtitle: Row(
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        if (dateStr != null) ...[
-                                          Icon(Icons.calendar_today,
-                                              size: 12, color: Colors.grey[500]),
-                                          const SizedBox(width: 4),
-                                          Flexible(
-                                            child: Text(
-                                              dateStr,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                        ],
-                                        Icon(Icons.group, size: 12, color: Colors.grey[500]),
-                                        const SizedBox(width: 4),
-                                        Flexible(
-                                          child: Text(
-                                            comensales,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                                          ),
+                                        const SizedBox(height: 3),
+                                        Row(
+                                          children: [
+                                            if (dateStr != null) ...[
+                                              Icon(Icons.calendar_today, size: 12, color: Colors.grey[500]),
+                                              const SizedBox(width: 4),
+                                              Text(dateStr, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                              const SizedBox(width: 10),
+                                            ],
+                                            Icon(Icons.group, size: 12, color: Colors.grey[500]),
+                                            const SizedBox(width: 4),
+                                            Text(comensalesText, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                          ],
                                         ),
+                                        if (isLoaded && totalCost > 0) ...[
+                                          const SizedBox(height: 5),
+                                          Row(
+                                            children: [
+                                              Icon(Icons.euro, size: 12, color: AppColors.lunch),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Total: €${totalCost.toStringAsFixed(2)}',
+                                                style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.lunch.withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  '€${costPerPerson.toStringAsFixed(2)}/comensal',
+                                                  style: TextStyle(
+                                                    color: AppColors.lunch,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ],
                                     ),
                                     trailing: PopupMenuButton<String>(

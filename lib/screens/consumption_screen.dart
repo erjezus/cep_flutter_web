@@ -265,7 +265,9 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
                       title: "No hay consumiciones registradas",
                       message: "Cuando consumas algo aparecerá aquí, agrupado por día.",
                     )
-                  : ListView(
+                  : RefreshIndicator(
+                      onRefresh: () async => fetchConsumptions(),
+                      child: ListView(
                       children: [
                         ...consumptionsByDay.map((dayData) {
                           final rawDate = dayData['date'];
@@ -280,6 +282,7 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
                         buildSummary(mainColor),
                         const SizedBox(height: 80),
                       ],
+                    ),
                     ),
         ),
       ),
@@ -362,7 +365,11 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
             }
           });
         },
-        children: items.map<Widget>((c) {
+        children: (List.from(items)..sort((a, b) {
+              final da = DateTime.tryParse(a['consumed_at'] ?? '') ?? DateTime(2000);
+              final db = DateTime.tryParse(b['consumed_at'] ?? '') ?? DateTime(2000);
+              return db.compareTo(da); // descendente: más reciente primero
+            })).map<Widget>((c) {
           final productName = c['product_name']?.toString() ?? 'Producto';
           final consumedAtRaw = c['consumed_at'];
           final consumedAtFormatted = consumedAtRaw != null

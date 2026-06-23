@@ -245,8 +245,11 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ResponsiveContainer(
+          : RefreshIndicator(
+              onRefresh: () async => fetchData(),
+              child: ResponsiveContainer(
               child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,6 +326,7 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
         ),
               ),
             ),
+          ),
     );
   }
 }
