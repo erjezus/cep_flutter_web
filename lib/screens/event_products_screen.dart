@@ -112,6 +112,30 @@ class _EventProductsScreenState extends State<EventProductsScreen> {
     }
   }
 
+  Future<void> _toggleVisibility(dynamic product, bool newValue) async {
+    final int id = product['id'];
+
+    // Optimistic update
+    setState(() => product['visible'] = newValue);
+
+    try {
+      final res = await http.patch(
+        Uri.parse('$baseUrl/api/event-products/visibility?id=$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'visible': newValue}),
+      );
+      if (res.statusCode != 200) {
+        setState(() => product['visible'] = !newValue);
+        if (!mounted) return;
+        AppSnackBar.error(context, 'Error al actualizar visibilidad');
+      }
+    } catch (e) {
+      setState(() => product['visible'] = !newValue);
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Error de red: $e');
+    }
+  }
+
   Future<void> saveCustomPrice(int productId, double customPrice) async {
     try {
       final body = jsonEncode({
@@ -236,67 +260,109 @@ class _EventProductsScreenState extends State<EventProductsScreen> {
     final double basePrice =
         double.tryParse(p['unit_price'].toString()) ?? 0;
     final bool hasCustom = (p['id'] ?? 0) != 0 && customPrice != basePrice;
+    final bool visible = p['visible'] == true || p['visible'] == 1;
 
-    return StandardCard(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: mainColor.withOpacity(0.1),
-          child: Icon(Icons.local_drink, color: mainColor),
-        ),
-        title: Text(
-          p['product_name']?.toString() ?? '',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Opacity(
+      opacity: visible ? 1.0 : 0.45,
+      child: StandardCard(
+        elevation: 3,
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Column(
           children: [
-            Text("Precio base: €${basePrice.toStringAsFixed(2)}",
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    "Precio evento: €${customPrice.toStringAsFixed(2)}",
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: hasCustom ? mainColor : Colors.black87,
-                    ),
-                  ),
-                ),
-                if (hasCustom) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: mainColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text("personalizado",
-                        style: TextStyle(fontSize: 10, color: mainColor)),
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: mainColor.withOpacity(0.1),
+                child: Icon(Icons.local_drink, color: mainColor),
+              ),
+              title: Text(
+                p['product_name']?.toString() ?? '',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Precio base: €${basePrice.toStringAsFixed(2)}",
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          "Precio evento: €${customPrice.toStringAsFixed(2)}",
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: hasCustom ? mainColor : Colors.black87,
+                          ),
+                        ),
+                      ),
+                      if (hasCustom) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: mainColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text("personalizado",
+                              style:
+                                  TextStyle(fontSize: 10, color: mainColor)),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
-              ],
-            ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (hasCustom)
-              IconButton(
-                tooltip: "Restablecer precio base",
-                icon: const Icon(Icons.restart_alt, color: Colors.grey),
-                onPressed: () => resetCustomPrice(p['id']),
               ),
-            IconButton(
-              tooltip: "Editar precio",
-              icon: Icon(Icons.edit, color: mainColor),
-              onPressed: () => showEditPriceDialog(p),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasCustom)
+                    IconButton(
+                      tooltip: "Restablecer precio base",
+                      icon:
+                          const Icon(Icons.restart_alt, color: Colors.grey),
+                      onPressed: () => resetCustomPrice(p['id']),
+                    ),
+                  IconButton(
+                    tooltip: "Editar precio",
+                    icon: Icon(Icons.edit, color: mainColor),
+                    onPressed: () => showEditPriceDialog(p),
+                  ),
+                ],
+              ),
+            ),
+            // ── Toggle de visibilidad ──────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 8, 6),
+              child: Row(
+                children: [
+                  Icon(
+                    visible
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    size: 14,
+                    color: Colors.grey[500],
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Visible en consumo',
+                    style:
+                        TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  const Spacer(),
+                  Transform.scale(
+                    scale: 0.8,
+                    alignment: Alignment.centerRight,
+                    child: Switch(
+                      value: visible,
+                      onChanged: (v) => _toggleVisibility(p, v),
+                      activeColor: mainColor,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

@@ -51,11 +51,11 @@ class _ProductScreenState extends State<ProductScreen> {
     for (final entry in _sessionCounts.entries) {
       if (entry.value == 0) continue;
       final p = _allProducts.firstWhere(
-        (p) => p['id'] == entry.key,
+        (p) => p['product_id'] == entry.key,
         orElse: () => null,
       );
       if (p != null) {
-        total += (double.tryParse('${p['unit_price']}') ?? 0) * entry.value;
+        total += (double.tryParse('${p['custom_price']}') ?? 0) * entry.value;
       }
     }
     return total;
@@ -92,8 +92,8 @@ class _ProductScreenState extends State<ProductScreen> {
     }
 
     try {
-      final response =
-          await http.get(Uri.parse('$baseUrl/api/products/grouped'));
+      final response = await http.get(
+          Uri.parse('$baseUrl/api/event-products/available?eventId=${widget.eventId}'));
       if (!mounted) return;
       if (response.statusCode == 200) {
         final List<dynamic> data =
@@ -463,11 +463,11 @@ class _ProductScreenState extends State<ProductScreen> {
 
   Widget? _buildCategory(String typology, List products) {
     // Filtrar por búsqueda
-    final filtered = _searchQuery.isEmpty
+        final filtered = _searchQuery.isEmpty
         ? products
         : products
             .where((p) =>
-                (p['name'] as String)
+                (p['product_name'] as String)
                     .toLowerCase()
                     .contains(_searchQuery))
             .toList();
@@ -501,12 +501,12 @@ class _ProductScreenState extends State<ProductScreen> {
               for (int i = 0; i < filtered.length; i++) ...[
                 _ProductRow(
                   product: filtered[i],
-                  sessionCount: _sessionCounts[filtered[i]['id']] ?? 0,
-                  isPending: _pendingProducts.contains(filtered[i]['id']),
-                  onTap: () =>
-                      _quickAdd(filtered[i]['id'], filtered[i]['name']),
+                  sessionCount: _sessionCounts[filtered[i]['product_id']] ?? 0,
+                  isPending: _pendingProducts.contains(filtered[i]['product_id']),
+                  onTap: () => _quickAdd(
+                      filtered[i]['product_id'], filtered[i]['product_name']),
                   onLongPress: () => _showQuantityDialog(
-                      filtered[i]['id'], filtered[i]['name']),
+                      filtered[i]['product_id'], filtered[i]['product_name']),
                 ),
                 if (i < filtered.length - 1)
                   const Divider(height: 1, indent: 16, endIndent: 0),
@@ -591,7 +591,7 @@ class _ProductRowState extends State<_ProductRow>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        p['name'],
+                        p['product_name'],
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -602,7 +602,7 @@ class _ProductRowState extends State<_ProductRow>
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '€${p['unit_price']}',
+                        '€${p['custom_price']}',
                         style:
                             TextStyle(fontSize: 13, color: Colors.grey[500]),
                       ),
