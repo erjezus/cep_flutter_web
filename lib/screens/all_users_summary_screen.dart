@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -281,7 +282,15 @@ class _UserCardState extends State<_UserCard> {
       ),
     );
 
-    await Printing.layoutPdf(onLayout: (_) async => pdf.save());
+    final pdfBytes = await pdf.save();
+    if (kIsWeb) {
+      await Printing.layoutPdf(onLayout: (_) async => pdfBytes);
+    } else {
+      await Printing.sharePdf(
+        bytes: pdfBytes,
+        filename: '${username.replaceAll(' ', '_')}_resumen.pdf',
+      );
+    }
   }
 
   @override
