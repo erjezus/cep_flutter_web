@@ -9,6 +9,7 @@ import 'package:cep_flutter_web/widgets/app_dialog.dart';
 import 'package:cep_flutter_web/widgets/admin/create_user_dialog.dart';
 import 'package:cep_flutter_web/widgets/admin/edit_user_dialog.dart';
 import 'package:cep_flutter_web/widgets/admin/change_role_dialog.dart';
+import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
 
 /// Pantalla de gestión de usuarios. Solo accesible para administradores.
 class UsersManagementScreen extends StatefulWidget {
@@ -195,7 +196,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SkeletonList(itemCount: 5);
     }
     if (_error != null) {
       return EmptyState(
@@ -293,7 +294,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: AppColors.users.withOpacity(0.10),
+                      color: AppColors.users.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
@@ -348,7 +349,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Text(

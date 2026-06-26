@@ -7,6 +7,7 @@ import 'package:cep_flutter_web/services/settings_service.dart';
 import 'package:cep_flutter_web/widgets/responsive_container.dart';
 import 'package:cep_flutter_web/widgets/animated_count.dart';
 import 'package:cep_flutter_web/widgets/app_snackbar.dart';
+import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
 
 class CommonSummaryScreen extends StatefulWidget {
   final int userId;
@@ -212,8 +213,8 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
             childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             leading: icon != null
                 ? Container(
-                    width: 34,
-                    height: 34,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(8),
@@ -281,7 +282,7 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
         title: const Text('Resumen personal'),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkeletonList(itemCount: 6)
           : RefreshIndicator(
               onRefresh: () async => fetchData(),
               child: ResponsiveContainer(

@@ -6,6 +6,7 @@ import 'package:cep_flutter_web/widgets/empty_state.dart';
 import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 import 'package:cep_flutter_web/widgets/app_dialog.dart';
 import 'package:cep_flutter_web/widgets/admin/event_form_dialog.dart';
+import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
 
 /// Pantalla de gestión de eventos. Solo accesible para administradores.
 class EventsManagementScreen extends StatefulWidget {
@@ -175,7 +176,7 @@ class _EventsManagementScreenState extends State<EventsManagementScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SkeletonList(itemCount: 5);
     }
     if (_error != null) {
       return EmptyState(
@@ -271,7 +272,7 @@ class _EventsManagementScreenState extends State<EventsManagementScreen> {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.09),
+                      color: AppColors.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(Icons.event, color: AppColors.primary, size: 20),
@@ -322,7 +323,7 @@ class _EventsManagementScreenState extends State<EventsManagementScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Text(

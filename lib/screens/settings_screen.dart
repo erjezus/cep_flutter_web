@@ -5,6 +5,7 @@ import 'package:cep_flutter_web/widgets/responsive_container.dart';
 import 'package:cep_flutter_web/widgets/empty_state.dart';
 import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 import 'package:cep_flutter_web/widgets/app_dialog.dart';
+import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
 
 /// Pantalla de configuración de parámetros globales. Solo accesible para admins.
 class SettingsScreen extends StatefulWidget {
@@ -119,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SkeletonList(itemCount: 4);
     }
 
     if (_error != null) {

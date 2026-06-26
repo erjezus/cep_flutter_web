@@ -7,6 +7,7 @@ import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/responsive_container.dart';
 import 'package:cep_flutter_web/widgets/empty_state.dart';
 import 'package:cep_flutter_web/widgets/app_snackbar.dart';
+import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
 import 'package:cep_flutter_web/screens/consumption_screen.dart';
 
 class ProductScreen extends StatefulWidget {
@@ -308,7 +309,7 @@ class _ProductScreenState extends State<ProductScreen> {
       child: Scaffold(
         appBar: AppBar(title: const Text('Consumir')),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const SkeletonList(itemCount: 8)
             : groupedProducts.isEmpty
                 ? const EmptyState(
                     icon: Icons.fastfood,

@@ -29,5 +29,17 @@ class AppColors {
   // --- Estados ---
   static final Color positive = Colors.green.shade700;
   static final Color negative = Colors.red.shade700;
+
+  /// Color de borde estándar de tarjetas.
+  static const Color border = Color(0xFFEEEEEE);
+
+  /// Fondo gris claro (notas, chips neutros).
+  static const Color surfaceGray = Color(0xFFF5F5F5);
+
+  /// Opacidad ligera para fondos de iconos/badges.
+  static const double opacityLight = 0.08;
+
+  /// Opacidad media para fondos de iconos.
+  static const double opacityMedium = 0.12;
 }
 

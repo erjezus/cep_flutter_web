@@ -195,7 +195,7 @@ class _EventProductsScreenState extends State<EventProductsScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Center(
           child: Text(
             product['product_name']?.toString() ?? 'Producto',
@@ -265,7 +265,7 @@ class _EventProductsScreenState extends State<EventProductsScreen> {
     return Opacity(
       opacity: visible ? 1.0 : 0.45,
       child: StandardCard(
-        elevation: 3,
+        elevation: 0,
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.only(bottom: 4),
         child: Column(

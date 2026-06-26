@@ -133,17 +133,25 @@ Color _neutralColor(dynamic v) {
   return Colors.black87;
 }
 
-Widget _sectionHeader(String emoji, String title, Color color) {
+Widget _sectionHeader(IconData icon, String title, Color color) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Row(
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 20)),
-        const SizedBox(width: 8),
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(width: 10),
         Text(
           title,
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
             color: color,
           ),
@@ -190,11 +198,11 @@ class _TotalsCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFEEEEEE)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -208,7 +216,7 @@ class _TotalsCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.primary,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
               children: [
@@ -305,7 +313,7 @@ class _DrinkCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader('🍺', 'Bebida', AppColors.primary),
+          _sectionHeader(Icons.local_bar, 'Bebida', AppColors.primary),
           _dataRow('Gastado en bebida', _fmt(data['drink_expenses'])),
           _dataRow('Consumido registrado', _fmt(data['drink_consumed'])),
           _dataRow('Pérdida bebida', _fmt(data['drink_loss']),
@@ -333,7 +341,7 @@ class _FoodCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader('🍽️', 'Comida', AppColors.food),
+          _sectionHeader(Icons.restaurant, 'Comida', AppColors.food),
           _dataRow('Gastado en comida', _fmt(data['food_expenses'])),
           _dataRow('Consumido registrado', _fmt(data['food_consumed'])),
           _dataRow('Pérdida comida', _fmt(data['food_loss']),
@@ -389,9 +397,15 @@ class _CommonExpensesCardState extends State<_CommonExpensesCard> {
           tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           childrenPadding:
               const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          leading: Text('👥',
-              style: TextStyle(fontSize: 20,
-                  color: color)),
+          leading: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.group_outlined, size: 16, color: color),
+          ),
           title: Text(
             'Gastos comunes',
             style: TextStyle(
@@ -489,7 +503,15 @@ class _LunchCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Row(
         children: [
-          const Text('🍴', style: TextStyle(fontSize: 20)),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.lunch.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.restaurant_menu, size: 16, color: AppColors.lunch),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -529,7 +551,15 @@ class _DepositsCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Row(
         children: [
-          const Text('💰', style: TextStyle(fontSize: 20)),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.positive.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.account_balance_wallet_outlined, size: 16, color: AppColors.positive),
+          ),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(
