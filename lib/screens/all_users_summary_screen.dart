@@ -293,7 +293,7 @@ class _UserCardState extends State<_UserCard> {
     final haAportado = (u['ha_aportado'] ?? 0.0).toDouble();
     final balanceColor = balance >= 0 ? Colors.green[700]! : Colors.red[700]!;
     final balanceLabel = balance >= 0
-        ? 'Le deben €${balance.toStringAsFixed(2)}'
+        ? 'Recibe €${balance.toStringAsFixed(2)}'
         : 'Debe €${balance.abs().toStringAsFixed(2)}';
 
     return Card(
@@ -349,6 +349,10 @@ class _UserCardState extends State<_UserCard> {
           children: [
             _SummaryTotalsRow(user: u, mainColor: color),
             const Divider(),
+            _LossDetailRow(
+              drinkLoss: (u['drink_loss_per_user'] ?? 0.0).toDouble(),
+              foodLoss: (u['food_loss_per_user'] ?? 0.0).toDouble(),
+            ),
             _BalanceDetailRow(haAportado: haAportado, debe: debe, balance: balance),
             const Divider(),
             _ConsumptionsSection(consumptions: u['consumptions'] ?? [], mainColor: color),
@@ -410,7 +414,7 @@ class _SummaryTotalsRow extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Fila ha_aportado / debe / balance
+// Fila ha_aportado / debe + balance destacado
 // ---------------------------------------------------------------------------
 class _BalanceDetailRow extends StatelessWidget {
   final double haAportado;
@@ -423,7 +427,7 @@ class _BalanceDetailRow extends StatelessWidget {
     required this.balance,
   });
 
-  Widget _tile(String label, String value, Color color) {
+  Widget _smallTile(String label, String value, Color color) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -436,10 +440,12 @@ class _BalanceDetailRow extends StatelessWidget {
         child: Column(
           children: [
             Text(value,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700, color: color)),
             const SizedBox(height: 2),
             Text(label,
-                style: const TextStyle(fontSize: 10, color: Colors.black54),
+                style:
+                    const TextStyle(fontSize: 10, color: Colors.black54),
                 textAlign: TextAlign.center),
           ],
         ),
@@ -449,14 +455,71 @@ class _BalanceDetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final balanceColor = balance >= 0 ? Colors.green[700]! : Colors.red[700]!;
+    final balanceColor =
+        balance >= 0 ? Colors.green[700]! : Colors.red[700]!;
+    final balanceLabel =
+        balance >= 0 ? 'Recibe' : 'Debe pagar';
+    final balanceStr =
+        '${balance >= 0 ? '+' : ''}€${balance.abs().toStringAsFixed(2)}';
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+      child: Column(
         children: [
-          _tile('Ha aportado', '€${haAportado.toStringAsFixed(2)}', Colors.green[700]!),
-          _tile('Debe', '€${debe.toStringAsFixed(2)}', Colors.red[700]!),
-          _tile('Balance', '${balance >= 0 ? '+' : ''}€${balance.toStringAsFixed(2)}', balanceColor),
+          // Fila secundaria: ha aportado + debe
+          Row(
+            children: [
+              _smallTile('Ha aportado',
+                  '€${haAportado.toStringAsFixed(2)}', Colors.green[700]!),
+              _smallTile(
+                  'Debe', '€${debe.toStringAsFixed(2)}', Colors.red[700]!),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Balance destacado: barra ancha con fondo sólido
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding:
+                const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              color: balanceColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      balanceLabel,
+                      style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Balance final',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11),
+                    ),
+                  ],
+                ),
+                Text(
+                  balanceStr,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -588,6 +651,74 @@ class _CommonExpensesSection extends StatelessWidget {
               ),
             )),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tiles de pérdida proporcional por bebida y comida
+// Mismo estilo visual que _BalanceDetailRow
+// ---------------------------------------------------------------------------
+class _LossDetailRow extends StatelessWidget {
+  final double drinkLoss;
+  final double foodLoss;
+
+  const _LossDetailRow({required this.drinkLoss, required this.foodLoss});
+
+  String _formatLoss(double value) {
+    if (value == 0.0) return '€0.00';
+    final sign = value > 0 ? '+' : '';
+    return '$sign€${value.toStringAsFixed(2)}';
+  }
+
+  Color _colorFor(double value) {
+    if (value < 0) return Colors.green[700]!;
+    if (value > 0) return Colors.red[700]!;
+    return Colors.black54;
+  }
+
+  Widget _tile(String label, double value) {
+    final color = _colorFor(value);
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.15)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              _formatLoss(value),
+              style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w700, color: color),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: Colors.black54),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (drinkLoss == 0.0 && foodLoss == 0.0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          if (drinkLoss != 0.0) _tile('Pérdida bebida / socio', drinkLoss),
+          if (foodLoss != 0.0) _tile('Pérdida comida / socio', foodLoss),
+        ],
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:cep_flutter_web/screens/event_menu_screen.dart';
 import 'package:cep_flutter_web/screens/users_management_screen.dart';
 import 'package:cep_flutter_web/screens/events_management_screen.dart';
+import 'package:cep_flutter_web/screens/settings_screen.dart';
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/standard_card.dart';
@@ -112,6 +113,21 @@ class _EventScreenState extends State<EventScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => UsersManagementScreen(
+                      currentUserId: widget.userId,
+                      currentUserRole: widget.userRole,
+                    ),
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Configuración',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SettingsScreen(
                       currentUserId: widget.userId,
                       currentUserRole: widget.userRole,
                     ),

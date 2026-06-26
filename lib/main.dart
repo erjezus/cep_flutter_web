@@ -148,27 +148,33 @@ class MyApp extends StatelessWidget {
   }
 
   Future<Map<String, dynamic>?> _getUserByEmail(String email) async {
-    const int maxRetries = 5;
-    const Duration delay = Duration(seconds: 2);
+    // Render free tier puede tardar hasta 60 s en arrancar (cold start).
+    // Usamos un timeout generoso por intento y varios reintentos.
+    const int maxRetries = 8;
+    const Duration requestTimeout = Duration(seconds: 65);
+    const Duration retryDelay = Duration(seconds: 5);
 
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        final response = await http.get(
-          Uri.parse('${AppConfig.baseUrl}/api/users/by-email?email=$email'),
-        );
+        final response = await http
+            .get(Uri.parse('${AppConfig.baseUrl}/api/users/by-email?email=$email'))
+            .timeout(requestTimeout);
 
         if (response.statusCode == 200) {
           return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
         }
 
         if (response.statusCode == 503 || response.statusCode == 502) {
-          await Future.delayed(delay * (attempt + 1));
+          await Future.delayed(retryDelay);
           continue;
         }
 
         break;
       } catch (e) {
-        await Future.delayed(delay * (attempt + 1));
+        // TimeoutException u otro error de red → reintentamos
+        if (attempt < maxRetries - 1) {
+          await Future.delayed(retryDelay);
+        }
       }
     }
 
@@ -199,18 +205,38 @@ class _LoadingWithFrasesState extends State<LoadingWithFrases> {
     "Preparando tu próxima ronda... 🥳🍻"
   ];
 
+  // Frases que aparecen tras 15 s para avisar del cold start del servidor
+  final frasesColdStart = [
+    "☕ El servidor estaba echando la siesta... ya se está despertando.",
+    "😴 Oye, que el servidor también necesita su descanso. Dale un segundo.",
+    "🐢 El servidor iba a su ritmo, pero ya va arrancando.",
+    "☀️ Despertando el servidor como los domingos: poco a poco.",
+    "🔌 El servidor estaba en reposo. Puede tardar hasta un minuto. ¡Paciencia!",
+    "🍳 Preparando el servidor como un buen desayuno... que las prisas no son buenas.",
+    "💤 Al servidor también le da la tarde. Ya está volviendo.",
+  ];
+
   int _currentFraseIndex = 0;
+  int _currentColdStartIndex = 0;
   Timer? _timer;
+  int _elapsed = 0;
   late Future<Map<String, dynamic>?> _future;
 
   @override
   void initState() {
     super.initState();
     _future = widget.future;
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
         setState(() {
-          _currentFraseIndex = Random().nextInt(frasesCubatas.length);
+          _elapsed++;
+          if (_elapsed % 10 == 0) {
+            _currentFraseIndex = Random().nextInt(frasesCubatas.length);
+          }
+          // Rota las frases de cold start cada 8 s
+          if (_elapsed >= 15 && (_elapsed - 15) % 8 == 0) {
+            _currentColdStartIndex = Random().nextInt(frasesColdStart.length);
+          }
         });
       }
     });
@@ -224,35 +250,56 @@ class _LoadingWithFrasesState extends State<LoadingWithFrases> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>?> (
+    return FutureBuilder<Map<String, dynamic>?>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
+          final bool coldStart = _elapsed >= 15;
           return Scaffold(
             body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 24),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 600),
-                    transitionBuilder: (Widget child, Animation<double> animation) {
-                      return FadeTransition(opacity: animation, child: child);
-                    },
-                    child: Text(
-                      frasesCubatas[_currentFraseIndex],
-                      key: ValueKey(_currentFraseIndex),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                        height: 1.4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 24),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 600),
+                      transitionBuilder: (child, animation) =>
+                          FadeTransition(opacity: animation, child: child),
+                      child: Text(
+                        frasesCubatas[_currentFraseIndex],
+                        key: ValueKey(_currentFraseIndex),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                          height: 1.4,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    if (coldStart) ...[
+                      const SizedBox(height: 16),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 800),
+                        transitionBuilder: (child, animation) =>
+                            FadeTransition(opacity: animation, child: child),
+                        child: Text(
+                          frasesColdStart[_currentColdStartIndex],
+                          key: ValueKey(_currentColdStartIndex),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           );

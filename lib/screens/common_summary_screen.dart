@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/config/app_colors.dart';
+import 'package:cep_flutter_web/services/settings_service.dart';
 import 'package:cep_flutter_web/widgets/responsive_container.dart';
 import 'package:cep_flutter_web/widgets/animated_count.dart';
 import 'package:cep_flutter_web/widgets/app_snackbar.dart';
@@ -10,8 +11,14 @@ import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 class CommonSummaryScreen extends StatefulWidget {
   final int userId;
   final int eventId;
+  final String userRole;
 
-  const CommonSummaryScreen({required this.userId, required this.eventId, super.key});
+  const CommonSummaryScreen({
+    required this.userId,
+    required this.eventId,
+    this.userRole = 'USER',
+    super.key,
+  });
 
   @override
   State<CommonSummaryScreen> createState() => _CommonSummaryScreenState();
@@ -22,8 +29,12 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
   double totalDrink = 0.0;
   double globalDrinkConsumed = 0.0;
   double globalDrinkSpent = 0.0;
+  double drinkLoss = 0.0;
+  double drinkLossPerUser = 0.0;
   double globalFoodConsumed = 0.0;
   double globalFoodSpent = 0.0;
+  double foodLoss = 0.0;
+  double foodLossPerUser = 0.0;
   double depositExpenses = 0.0;
   double totalPaidExpenses = 0.0;
 
@@ -34,6 +45,7 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
   List<Map<String, dynamic>> lunchCosts = [];
 
   bool isLoading = false;
+  bool _applyDeposit = true;
   final baseUrl = AppConfig.baseUrl;
 
   @override
@@ -47,17 +59,42 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
     setState(() => isLoading = true);
 
     try {
-      final foodRes = await http.get(Uri.parse('$baseUrl/api/consumptions/total/event?userId=${widget.userId}&eventId=${widget.eventId}&type=Comida'));
-      final drinkRes = await http.get(Uri.parse('$baseUrl/api/consumptions/total/event?userId=${widget.userId}&eventId=${widget.eventId}&type=Bebida'));
-      final globalDrinkRes = await http.get(Uri.parse('$baseUrl/api/summary/drink?eventId=${widget.eventId}'));
-      final globalFoodRes = await http.get(Uri.parse('$baseUrl/api/summary/food?eventId=${widget.eventId}'));
-      final commonExpensesRes = await http.get(Uri.parse('$baseUrl/api/summary/common?eventId=${widget.eventId}'));
-      final usersRes = await http.get(Uri.parse('$baseUrl/api/users/count'));
-      final lunchCostsRes = await http.get(Uri.parse('$baseUrl/api/summary/lunch-costs?eventId=${widget.eventId}&userId=${widget.userId}'));
-      final depositRes = await http.get(Uri.parse('$baseUrl/api/summary/deposit?eventId=${widget.eventId}&userId=${widget.userId}'));
-      final paidExpensesRes = await http.get(Uri.parse('$baseUrl/api/summary/paid?eventId=${widget.eventId}&userId=${widget.userId}'));
+      final settingsService = SettingsService(
+        adminUserId: widget.userId,
+        adminUserRole: widget.userRole,
+      );
+
+      final results = await Future.wait([
+        http.get(Uri.parse('$baseUrl/api/consumptions/total/event?userId=${widget.userId}&eventId=${widget.eventId}&type=Comida')),
+        http.get(Uri.parse('$baseUrl/api/consumptions/total/event?userId=${widget.userId}&eventId=${widget.eventId}&type=Bebida')),
+        http.get(Uri.parse('$baseUrl/api/summary/drink?eventId=${widget.eventId}')),
+        http.get(Uri.parse('$baseUrl/api/summary/food?eventId=${widget.eventId}')),
+        http.get(Uri.parse('$baseUrl/api/summary/common?eventId=${widget.eventId}')),
+        http.get(Uri.parse('$baseUrl/api/users/count')),
+        http.get(Uri.parse('$baseUrl/api/summary/lunch-costs?eventId=${widget.eventId}&userId=${widget.userId}')),
+        http.get(Uri.parse('$baseUrl/api/summary/deposit?eventId=${widget.eventId}&userId=${widget.userId}')),
+        http.get(Uri.parse('$baseUrl/api/summary/paid?eventId=${widget.eventId}&userId=${widget.userId}')),
+      ]);
+
+      // Carga el setting "a cuenta" (sin bloquear si falla)
+      bool applyDeposit = true;
+      try {
+        final settings = await settingsService.getSettings();
+        final raw = settings['apply_deposit'];
+        applyDeposit = raw == true || raw == 'true';
+      } catch (_) {}
 
       if (!mounted) return;
+
+      final foodRes         = results[0];
+      final drinkRes        = results[1];
+      final globalDrinkRes  = results[2];
+      final globalFoodRes   = results[3];
+      final commonExpensesRes = results[4];
+      final usersRes        = results[5];
+      final lunchCostsRes   = results[6];
+      final depositRes      = results[7];
+      final paidExpensesRes = results[8];
 
       if (foodRes.statusCode == 200 &&
           drinkRes.statusCode == 200 &&
@@ -69,34 +106,37 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
           depositRes.statusCode == 200 &&
           paidExpensesRes.statusCode == 200) {
 
-        final foodData = jsonDecode(foodRes.body);
-        final drinkData = jsonDecode(drinkRes.body);
+        final foodData        = jsonDecode(foodRes.body);
+        final drinkData       = jsonDecode(drinkRes.body);
         final globalDrinkData = jsonDecode(globalDrinkRes.body);
-        final globalFoodData = jsonDecode(globalFoodRes.body);
-        final commonData = jsonDecode(commonExpensesRes.body);
-        final usersData = jsonDecode(usersRes.body);
-        final lunchData = jsonDecode(utf8.decode(lunchCostsRes.bodyBytes));
-        final depositData = jsonDecode(depositRes.body);
-        final paidData = jsonDecode(paidExpensesRes.body);
+        final globalFoodData  = jsonDecode(globalFoodRes.body);
+        final commonData      = jsonDecode(commonExpensesRes.body);
+        final usersData       = jsonDecode(usersRes.body);
+        final lunchData       = jsonDecode(utf8.decode(lunchCostsRes.bodyBytes));
+        final depositData     = jsonDecode(depositRes.body);
+        final paidData        = jsonDecode(paidExpensesRes.body);
 
         final totalCommon = (commonData['total_common'] ?? 0).toDouble();
-        final users = (usersData['total_users'] ?? 0).toInt();
+        final users       = (usersData['total_users'] ?? 0).toInt();
 
         setState(() {
-          totalFood = (foodData['total'] ?? 0).toDouble();
-          totalDrink = (drinkData['total'] ?? 0).toDouble();
-          globalDrinkConsumed = (globalDrinkData['total_consumed'] ?? 0).toDouble();
-          globalDrinkSpent = (globalDrinkData['total_spent'] ?? 0).toDouble();
-          globalFoodConsumed = (globalFoodData['total_consumed'] ?? 0).toDouble();
-          globalFoodSpent = (globalFoodData['total_spent'] ?? 0).toDouble();
-          depositExpenses = (depositData['total_deposit'] ?? 0).toDouble();
-          totalPaidExpenses = (paidData['total_paid'] ?? 0).toDouble();
-
-          totalCommonExpenses = totalCommon;
-          userCount = users;
-          commonPerUser = users > 0 ? totalCommon / users : 0.0;
-
-          lunchCosts = List<Map<String, dynamic>>.from(lunchData);
+          totalFood            = (foodData['total'] ?? 0).toDouble();
+          totalDrink           = (drinkData['total'] ?? 0).toDouble();
+          globalDrinkConsumed  = (globalDrinkData['total_consumed'] ?? 0).toDouble();
+          globalDrinkSpent     = (globalDrinkData['total_spent'] ?? 0).toDouble();
+          drinkLoss            = (globalDrinkData['loss'] ?? 0).toDouble();
+          drinkLossPerUser     = (globalDrinkData['loss_per_user'] ?? 0).toDouble();
+          globalFoodConsumed   = (globalFoodData['total_consumed'] ?? 0).toDouble();
+          globalFoodSpent      = (globalFoodData['total_spent'] ?? 0).toDouble();
+          foodLoss             = (globalFoodData['loss'] ?? 0).toDouble();
+          foodLossPerUser      = (globalFoodData['loss_per_user'] ?? 0).toDouble();
+          depositExpenses      = (depositData['total_deposit'] ?? 0).toDouble();
+          totalPaidExpenses    = (paidData['total_paid'] ?? 0).toDouble();
+          totalCommonExpenses  = totalCommon;
+          userCount            = users;
+          commonPerUser        = users > 0 ? totalCommon / users : 0.0;
+          lunchCosts           = List<Map<String, dynamic>>.from(lunchData);
+          _applyDeposit        = applyDeposit;
         });
       } else {
         throw Exception("Error al cargar los datos");
@@ -232,16 +272,13 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
   Widget build(BuildContext context) {
 
     final total = totalFood + totalDrink;
-    final diferenciaBebida = globalDrinkSpent - globalDrinkConsumed;
-    final diferenciaComida = globalFoodSpent - globalFoodConsumed;
-    final perdidaBebidaUsuario = userCount > 0 ? diferenciaBebida / userCount : 0.0;
-    final perdidaComidaUsuario = userCount > 0 ? diferenciaComida / userCount : 0.0;
     final costeUsuarioAlmuerzos = lunchCosts.fold<double>(0.0, (sum, item) => sum + (item['user_cost'] ?? 0));
-    final totalFinal = total + costeUsuarioAlmuerzos + perdidaBebidaUsuario + perdidaComidaUsuario + commonPerUser - depositExpenses - totalPaidExpenses;
+    final depositoEfectivo = _applyDeposit ? depositExpenses : 0.0;
+    final totalFinal = total + costeUsuarioAlmuerzos + drinkLossPerUser + foodLossPerUser + commonPerUser - depositoEfectivo - totalPaidExpenses;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Resumen total'),
+        title: const Text('Resumen personal'),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -291,33 +328,35 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
             buildSection("Resumen general bebida", [
               buildRow("Total comprado", "€${globalDrinkSpent.toStringAsFixed(2)}", icon: Icons.shopping_cart),
               buildRow("Total consumido", "€${globalDrinkConsumed.toStringAsFixed(2)}", icon: Icons.local_bar),
-              buildRow("Diferencia", "€${diferenciaBebida.toStringAsFixed(2)}", icon: Icons.trending_down),
-              buildRow("Pérdida por usuario", "€${perdidaBebidaUsuario.toStringAsFixed(2)}", highlight: true, overrideColor: perdidaBebidaUsuario > 0 ? Colors.red : Colors.green),
+              buildRow("Diferencia", "€${drinkLoss.toStringAsFixed(2)}", icon: Icons.trending_down),
+              buildRow("Pérdida por usuario", "€${drinkLossPerUser.toStringAsFixed(2)}", highlight: true, overrideColor: drinkLossPerUser > 0 ? Colors.red : Colors.green),
             ], icon: Icons.local_bar),
             buildSection("Resumen general comida", [
               buildRow("Total comprado", "€${globalFoodSpent.toStringAsFixed(2)}", icon: Icons.shopping_cart),
               buildRow("Total consumido", "€${globalFoodConsumed.toStringAsFixed(2)}", icon: Icons.fastfood),
-              buildRow("Diferencia", "€${diferenciaComida.toStringAsFixed(2)}", icon: Icons.trending_down),
-              buildRow("Pérdida por usuario", "€${perdidaComidaUsuario.toStringAsFixed(2)}", highlight: true, overrideColor: perdidaComidaUsuario > 0 ? Colors.red : Colors.green),
+              buildRow("Diferencia", "€${foodLoss.toStringAsFixed(2)}", icon: Icons.trending_down),
+              buildRow("Pérdida por usuario", "€${foodLossPerUser.toStringAsFixed(2)}", highlight: true, overrideColor: foodLossPerUser > 0 ? Colors.red : Colors.green),
             ], icon: Icons.restaurant),
             buildSection("Gastos comunes", [
               buildRow("Total común", "€${totalCommonExpenses.toStringAsFixed(2)}"),
               buildRow("Usuarios registrados", "$userCount"),
               buildRow("Parte por usuario", "€${commonPerUser.toStringAsFixed(2)}", highlight: true),
             ], icon: Icons.group),
-            buildSection("Gastos a cuenta", [
-              buildRow("Total aportado por el usuario", "€${depositExpenses.toStringAsFixed(2)}", icon: Icons.account_balance_wallet),
-            ], icon: Icons.account_balance_wallet),
+            if (_applyDeposit)
+              buildSection("Gastos a cuenta", [
+                buildRow("Total aportado por el usuario", "€${depositExpenses.toStringAsFixed(2)}", icon: Icons.account_balance_wallet),
+              ], icon: Icons.account_balance_wallet),
             buildSection("Gastos pagados", [
               buildRow("Total marcado como pagado", "€${totalPaidExpenses.toStringAsFixed(2)}", icon: Icons.check_circle_outline, highlight: true),
             ], icon: Icons.check_circle),
             buildSection("Resumen final", [
               buildRow("Total consumido", "€${total.toStringAsFixed(2)}", icon: Icons.local_dining),
               buildRow("Coste usuario almuerzos", "€${costeUsuarioAlmuerzos.toStringAsFixed(2)}", icon: Icons.lunch_dining),
-              buildRow("Pérdida por usuario (bebida)", "€${perdidaBebidaUsuario.toStringAsFixed(2)}", icon: Icons.local_bar),
-              buildRow("Pérdida por usuario (comida)", "€${perdidaComidaUsuario.toStringAsFixed(2)}", icon: Icons.restaurant),
+              buildRow("Pérdida por usuario (bebida)", "€${drinkLossPerUser.toStringAsFixed(2)}", icon: Icons.local_bar),
+              buildRow("Pérdida por usuario (comida)", "€${foodLossPerUser.toStringAsFixed(2)}", icon: Icons.restaurant),
               buildRow("Parte por usuario de gastos comunes", "€${commonPerUser.toStringAsFixed(2)}", icon: Icons.group),
-              buildRow("Gastos a cuenta", "-€${depositExpenses.toStringAsFixed(2)}", icon: Icons.account_balance_wallet),
+              if (_applyDeposit)
+                buildRow("Gastos a cuenta", "-€${depositExpenses.toStringAsFixed(2)}", icon: Icons.account_balance_wallet),
               buildRow("Gastos pagados", "-€${totalPaidExpenses.toStringAsFixed(2)}", icon: Icons.check_circle_outline),
               const Divider(),
               buildRow("Total final", "€${totalFinal.toStringAsFixed(2)}", highlight: true, icon: Icons.summarize),

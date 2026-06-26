@@ -73,5 +73,20 @@ class EventManagementService {
       throw EventManagementException('Error al eliminar el evento (${res.statusCode})');
     }
   }
+
+  /// Recalcula los precios de todas las consumiciones de un evento.
+  /// Devuelve el número de filas actualizadas.
+  Future<int> recalculateConsumptionPrices(int eventId) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/api/consumptions/recalculate?eventId=$eventId'),
+      headers: _headers,
+    );
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final data = jsonDecode(utf8.decode(res.bodyBytes));
+      return (data['rows_updated'] as num?)?.toInt() ?? 0;
+    }
+    throw EventManagementException(
+        'Error al recalcular precios (${res.statusCode})');
+  }
 }
 

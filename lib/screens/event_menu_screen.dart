@@ -10,6 +10,7 @@ import 'package:cep_flutter_web/screens/common_summary_screen.dart';
 import 'package:cep_flutter_web/screens/lunch_list_screen.dart';
 import 'package:cep_flutter_web/screens/all_users_summary_screen.dart';
 import 'package:cep_flutter_web/screens/event_products_screen.dart';
+import 'package:cep_flutter_web/screens/event_overview_screen.dart';
 import 'package:cep_flutter_web/screens/users_management_screen.dart';
 import 'package:cep_flutter_web/config/app_colors.dart';
 import 'package:cep_flutter_web/widgets/responsive_container.dart';
@@ -184,10 +185,10 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
       ),
       _MenuAction(
         icon: Icons.summarize,
-        label: 'Resumen total',
+        label: 'Resumen personal',
         color: AppColors.blue,
         onTap: () => _go(context,
-            CommonSummaryScreen(userId: userId, eventId: eventId)),
+            CommonSummaryScreen(userId: userId, eventId: eventId, userRole: widget.userRole)),
       ),
       _MenuAction(
         icon: Icons.people_alt,
@@ -196,9 +197,19 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
         onTap: () => _go(context,
             AllUsersSummaryScreen(eventId: eventId)),
       ),
+
     ];
 
     if (_isAdmin) {
+      actions.add(
+      _MenuAction(
+        icon: Icons.analytics_outlined,
+        label: 'Resumen del evento',
+        color: AppColors.prices,
+        onTap: () => _go(context,
+            EventOverviewScreen(eventId: eventId, eventName: eventName)),
+      ),
+      );
       actions.add(
         _MenuAction(
           icon: Icons.sell,

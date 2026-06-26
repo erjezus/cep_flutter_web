@@ -10,6 +10,7 @@ import 'package:cep_flutter_web/widgets/empty_state.dart';
 import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
 import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 import 'package:cep_flutter_web/widgets/create_product_dialog.dart';
+import 'package:cep_flutter_web/services/event_management_service.dart';
 
 class EventProductsScreen extends StatefulWidget {
   final int eventId;
@@ -31,7 +32,10 @@ class _EventProductsScreenState extends State<EventProductsScreen> {
   Map<String, List<dynamic>> groupedProducts = {};
   Map<String, bool> expandedSections = {};
   bool _isLoading = true;
+  bool _isRecalculating = false;
   String? _error;
+
+  final _eventService = EventManagementService();
 
   @override
   void initState() {
@@ -86,6 +90,25 @@ class _EventProductsScreenState extends State<EventProductsScreen> {
     final created = await CreateProductDialog.show(context, widget.eventId);
     if (created) {
       await fetchEventProducts();
+    }
+  }
+
+  Future<void> _recalculatePrices() async {
+    setState(() => _isRecalculating = true);
+    try {
+      final rowsUpdated =
+          await _eventService.recalculateConsumptionPrices(widget.eventId);
+      if (!mounted) return;
+      AppSnackBar.success(
+        context,
+        'Precios recalculados correctamente. $rowsUpdated consumiciones actualizadas.',
+      );
+      await fetchEventProducts();
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Error al recalcular precios: $e');
+    } finally {
+      if (mounted) setState(() => _isRecalculating = false);
     }
   }
 
@@ -308,6 +331,34 @@ class _EventProductsScreenState extends State<EventProductsScreen> {
               ? "Precios · ${widget.eventName}"
               : "Precios",
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _isRecalculating
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  )
+                : TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      disabledForegroundColor: Colors.white54,
+                    ),
+                    onPressed: _isLoading ? null : _recalculatePrices,
+                    icon: const Icon(Icons.calculate_outlined, size: 20),
+                    label: const Text("Recalcular precios"),
+                  ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreateProductDialog,
