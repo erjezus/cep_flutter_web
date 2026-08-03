@@ -8,6 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:cep_flutter_web/config/config.dart';
 import 'package:cep_flutter_web/config/app_colors.dart';
+import 'package:cep_flutter_web/services/settings_service.dart';
 import 'package:cep_flutter_web/widgets/responsive_container.dart';
 import 'package:cep_flutter_web/widgets/empty_state.dart';
 import 'package:cep_flutter_web/widgets/skeleton_loader.dart';
@@ -15,8 +16,15 @@ import 'package:cep_flutter_web/widgets/app_snackbar.dart';
 
 class AllUsersSummaryScreen extends StatefulWidget {
   final int eventId;
+  final int userId;
+  final String userRole;
 
-  const AllUsersSummaryScreen({required this.eventId, super.key});
+  const AllUsersSummaryScreen({
+    required this.eventId,
+    required this.userId,
+    this.userRole = 'USER',
+    super.key,
+  });
 
   @override
   State<AllUsersSummaryScreen> createState() => _AllUsersSummaryScreenState();
@@ -25,6 +33,7 @@ class AllUsersSummaryScreen extends StatefulWidget {
 class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
   List<dynamic> usersData = [];
   bool isLoading = false;
+  bool _applyDeposit = true;
   final baseUrl = AppConfig.baseUrl;
   final Color mainColor = AppColors.primary;
 
@@ -38,13 +47,26 @@ class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
     if (!mounted) return;
     setState(() => isLoading = true);
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/summary/all-users?eventId=${widget.eventId}'),
+      // Carga el setting "a cuenta" en paralelo con los datos de usuarios.
+      final settingsService = SettingsService(
+        adminUserId: widget.userId,
+        adminUserRole: widget.userRole,
       );
+      final results = await Future.wait([
+        http.get(Uri.parse('$baseUrl/api/summary/all-users?eventId=${widget.eventId}')),
+        settingsService.getSettings().then<bool>((s) {
+          final raw = s['apply_deposit'];
+          return raw == true || raw == 'true';
+        }).catchError((_) => true),
+      ]);
+
       if (!mounted) return;
+      final response = results[0] as http.Response;
+      final applyDeposit = results[1] as bool;
       if (response.statusCode == 200) {
         setState(() {
           usersData = jsonDecode(utf8.decode(response.bodyBytes));
+          _applyDeposit = applyDeposit;
         });
       } else {
         _showError('Error al cargar el resumen');
@@ -90,7 +112,7 @@ class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                       itemCount: usersData.length,
                       itemBuilder: (context, index) =>
-                          _UserCard(user: usersData[index], mainColor: mainColor),
+                          _UserCard(user: usersData[index], mainColor: mainColor, applyDeposit: _applyDeposit),
                     ),
         ),
       ),
@@ -104,8 +126,9 @@ class _AllUsersSummaryScreenState extends State<AllUsersSummaryScreen> {
 class _UserCard extends StatefulWidget {
   final Map<String, dynamic> user;
   final Color mainColor;
+  final bool applyDeposit;
 
-  const _UserCard({required this.user, required this.mainColor});
+  const _UserCard({required this.user, required this.mainColor, required this.applyDeposit});
 
   @override
   State<_UserCard> createState() => _UserCardState();
@@ -127,11 +150,20 @@ class _UserCardState extends State<_UserCard> {
     final debe = (u['debe'] ?? 0.0).toDouble();
     final totalConsumption = (u['total_consumption'] ?? 0.0).toDouble();
     final totalLunch = (u['total_lunch_cost'] ?? 0.0).toDouble();
-    final totalPaidByType = (u['total_paid_by_type'] ?? 0.0).toDouble();
     final commonShare = (u['common_share'] ?? 0.0).toDouble();
 
     final consumptions = (u['consumptions'] as List? ?? []);
-    final paidExpenses = (u['paid_expenses_by_type'] as List? ?? []);
+    // Filtra "A cuenta" si el modo no está activo.
+    final allPaidExpenses = (u['paid_expenses_by_type'] as List? ?? []);
+    final paidExpenses = widget.applyDeposit
+        ? allPaidExpenses
+        : allPaidExpenses.where((e) => e['expense_type'] != 'A cuenta').toList();
+    final aCuentaPdf = widget.applyDeposit
+        ? 0.0
+        : allPaidExpenses
+            .where((e) => e['expense_type'] == 'A cuenta')
+            .fold<double>(0.0, (s, e) => s + ((e['total_amount'] ?? 0.0) as num).toDouble());
+    final totalPaidByType = ((u['total_paid_by_type'] ?? 0.0) as num).toDouble() - aCuentaPdf;
     final lunchCosts = (u['lunch_costs'] as List? ?? [])
         .where((l) => (l['user_cost'] ?? 0.0) > 0)
         .toList();
@@ -305,6 +337,19 @@ class _UserCardState extends State<_UserCard> {
         ? 'Recibe €${balance.toStringAsFixed(2)}'
         : 'Debe €${balance.abs().toStringAsFixed(2)}';
 
+    // Filtra gastos "A cuenta" si el modo no está activo.
+    final allExpenses = List<dynamic>.from(u['paid_expenses_by_type'] ?? []);
+    final filteredExpenses = widget.applyDeposit
+        ? allExpenses
+        : allExpenses.where((e) => e['expense_type'] != 'A cuenta').toList();
+    final aCuentaTotal = widget.applyDeposit
+        ? 0.0
+        : allExpenses
+            .where((e) => e['expense_type'] == 'A cuenta')
+            .fold<double>(0.0, (s, e) => s + ((e['total_amount'] ?? 0.0) as num).toDouble());
+    final adjustedPaidTotal =
+        ((u['total_paid_by_type'] ?? 0.0) as num).toDouble() - aCuentaTotal;
+
     return Card(
       color: Colors.white,
       elevation: 0,
@@ -356,7 +401,7 @@ class _UserCardState extends State<_UserCard> {
             ],
           ),
           children: [
-            _SummaryTotalsRow(user: u, mainColor: color),
+            _SummaryTotalsRow(user: u, mainColor: color, paidTotal: adjustedPaidTotal),
             const Divider(),
             _LossDetailRow(
               drinkLoss: (u['drink_loss_per_user'] ?? 0.0).toDouble(),
@@ -366,7 +411,7 @@ class _UserCardState extends State<_UserCard> {
             const Divider(),
             _ConsumptionsSection(consumptions: u['consumptions'] ?? [], mainColor: color),
             const SizedBox(height: 6),
-            _ExpensesSection(expenses: u['paid_expenses_by_type'] ?? [], mainColor: color),
+            _ExpensesSection(expenses: filteredExpenses, mainColor: color),
             const SizedBox(height: 6),
             _LunchSection(lunchCosts: u['lunch_costs'] ?? [], mainColor: color),
             const SizedBox(height: 6),
@@ -388,8 +433,9 @@ class _UserCardState extends State<_UserCard> {
 class _SummaryTotalsRow extends StatelessWidget {
   final Map<String, dynamic> user;
   final Color mainColor;
+  final double paidTotal;
 
-  const _SummaryTotalsRow({required this.user, required this.mainColor});
+  const _SummaryTotalsRow({required this.user, required this.mainColor, required this.paidTotal});
 
   Widget _tile(String label, String value, Color color) {
     return Expanded(
@@ -414,7 +460,7 @@ class _SummaryTotalsRow extends StatelessWidget {
         children: [
           _tile('Consumo', '€${(user['total_consumption'] ?? 0.0).toStringAsFixed(2)}', mainColor),
           _tile('Almuerzos', '€${(user['total_lunch_cost'] ?? 0.0).toStringAsFixed(2)}', Colors.blue[700]!),
-          _tile('Gastos pagados', '€${(user['total_paid_by_type'] ?? 0.0).toStringAsFixed(2)}', Colors.orange[800]!),
+          _tile('Gastos pagados', '€${paidTotal.toStringAsFixed(2)}', Colors.orange[800]!),
           _tile('Parte común', '€${(user['common_share'] ?? 0.0).toStringAsFixed(2)}', Colors.purple[700]!),
         ],
       ),

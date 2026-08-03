@@ -117,7 +117,9 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
         final expData = jsonDecode(utf8.decode(expRes.bodyBytes));
         if (expData is! List) continue;
         for (final e in expData) {
-          uniqueExpenses[e['id']] = e;
+          // No sobreescribir: el endpoint general ya devuelve el gasto con el
+          // campo `paid` correcto; el endpoint de almuerzos puede omitirlo.
+          uniqueExpenses.putIfAbsent(e['id'], () => e);
         }
       }
     } catch (_) {
@@ -195,7 +197,7 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
         label: 'Resumen por usuario',
         color: AppColors.users,
         onTap: () => _go(context,
-            AllUsersSummaryScreen(eventId: eventId)),
+            AllUsersSummaryScreen(eventId: eventId, userId: userId, userRole: userRole)),
       ),
 
     ];
