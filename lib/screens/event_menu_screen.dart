@@ -199,19 +199,16 @@ class _EventMenuScreenState extends State<EventMenuScreen> {
         onTap: () => _go(context,
             AllUsersSummaryScreen(eventId: eventId, userId: userId, userRole: userRole)),
       ),
-
-    ];
-
-    if (_isAdmin) {
-      actions.add(
       _MenuAction(
         icon: Icons.analytics_outlined,
         label: 'Resumen del evento',
         color: AppColors.prices,
         onTap: () => _go(context,
-            EventOverviewScreen(eventId: eventId, eventName: eventName)),
+            EventOverviewScreen(eventId: eventId, eventName: eventName, userRole: userRole)),
       ),
-      );
+    ];
+
+    if (_isAdmin) {
       actions.add(
         _MenuAction(
           icon: Icons.sell,
