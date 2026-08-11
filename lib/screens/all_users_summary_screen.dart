@@ -764,14 +764,14 @@ class _LossDetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (drinkLoss == 0.0 && foodLoss == 0.0) return const SizedBox.shrink();
+    if (drinkLoss <= 0.0 && foodLoss <= 0.0) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          if (drinkLoss != 0.0) _tile('Pérdida bebida / socio', drinkLoss),
-          if (foodLoss != 0.0) _tile('Pérdida comida / socio', foodLoss),
+          if (drinkLoss > 0.0) _tile('Pérdida bebida / socio', drinkLoss),
+          if (foodLoss > 0.0) _tile('Pérdida comida / socio', foodLoss),
         ],
       ),
     );
