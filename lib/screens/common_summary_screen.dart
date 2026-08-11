@@ -330,13 +330,15 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
               buildRow("Total comprado", "€${globalDrinkSpent.toStringAsFixed(2)}", icon: Icons.shopping_cart),
               buildRow("Total consumido", "€${globalDrinkConsumed.toStringAsFixed(2)}", icon: Icons.local_bar),
               buildRow("Diferencia", "€${drinkLoss.toStringAsFixed(2)}", icon: Icons.trending_down),
-              buildRow("Pérdida por usuario", "€${drinkLossPerUser.toStringAsFixed(2)}", highlight: true, overrideColor: drinkLossPerUser > 0 ? Colors.red : Colors.green),
+              if (drinkLossPerUser > 0)
+                buildRow("Pérdida por usuario", "€${drinkLossPerUser.toStringAsFixed(2)}", highlight: true, overrideColor: Colors.red),
             ], icon: Icons.local_bar),
             buildSection("Resumen general comida", [
               buildRow("Total comprado", "€${globalFoodSpent.toStringAsFixed(2)}", icon: Icons.shopping_cart),
               buildRow("Total consumido", "€${globalFoodConsumed.toStringAsFixed(2)}", icon: Icons.fastfood),
               buildRow("Diferencia", "€${foodLoss.toStringAsFixed(2)}", icon: Icons.trending_down),
-              buildRow("Pérdida por usuario", "€${foodLossPerUser.toStringAsFixed(2)}", highlight: true, overrideColor: foodLossPerUser > 0 ? Colors.red : Colors.green),
+              if (foodLossPerUser > 0)
+                buildRow("Pérdida por usuario", "€${foodLossPerUser.toStringAsFixed(2)}", highlight: true, overrideColor: Colors.red),
             ], icon: Icons.restaurant),
             buildSection("Gastos comunes", [
               buildRow("Total común", "€${totalCommonExpenses.toStringAsFixed(2)}"),
@@ -353,8 +355,10 @@ class _CommonSummaryScreenState extends State<CommonSummaryScreen> {
             buildSection("Resumen final", [
               buildRow("Total consumido", "€${total.toStringAsFixed(2)}", icon: Icons.local_dining),
               buildRow("Coste usuario almuerzos", "€${costeUsuarioAlmuerzos.toStringAsFixed(2)}", icon: Icons.lunch_dining),
-              buildRow("Pérdida por usuario (bebida)", "€${drinkLossPerUser.toStringAsFixed(2)}", icon: Icons.local_bar),
-              buildRow("Pérdida por usuario (comida)", "€${foodLossPerUser.toStringAsFixed(2)}", icon: Icons.restaurant),
+              if (drinkLossPerUser > 0)
+                buildRow("Pérdida por usuario (bebida)", "€${drinkLossPerUser.toStringAsFixed(2)}", icon: Icons.local_bar),
+              if (foodLossPerUser > 0)
+                buildRow("Pérdida por usuario (comida)", "€${foodLossPerUser.toStringAsFixed(2)}", icon: Icons.restaurant),
               buildRow("Parte por usuario de gastos comunes", "€${commonPerUser.toStringAsFixed(2)}", icon: Icons.group),
               if (_applyDeposit)
                 buildRow("Gastos a cuenta", "-€${depositExpenses.toStringAsFixed(2)}", icon: Icons.account_balance_wallet),
